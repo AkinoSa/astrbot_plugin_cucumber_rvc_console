@@ -12,7 +12,7 @@
 
 ## 依赖
 
-- [cucumber-rvc-gateway](https://github.com/<用户名>/cucumber-rvc-gateway) v1.0.0+(独立部署,Docker)
+- [cucumber-rvc-gateway](https://github.com/AkinoSa/cucumber-rvc-gateway) v1.0.0+(独立部署,Docker)
 - AstrBot >= 4.16(实测 4.29),支持 Function Calling 的 LLM 提供商
 
 ## 已知限制

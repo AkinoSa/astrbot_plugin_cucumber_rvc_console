@@ -14,7 +14,7 @@
 </div>
 
 > [!NOTE]
-> 本插件需要配合独立部署的 **[cucumber-rvc-gateway](https://github.com/<用户名>/cucumber-rvc-gateway)** 推理网关使用(见下方「后端准备」)。
+> 本插件需要配合独立部署的 **[cucumber-rvc-gateway](https://github.com/AkinoSa/cucumber-rvc-gateway)** 推理网关使用(见下方「后端准备」)。
 > 当前项目由 [sdfsfsk/matsuko_cover](https://github.com/sdfsfsk/matsuko_cover) 派生而来,功能差异见 [docs/UPSTREAM_COMPARISON.md](docs/UPSTREAM_COMPARISON.md)。许可证 AGPL-3.0。
 
 ## 这是什么
@@ -68,7 +68,7 @@
 
 ```bash
 cd AstrBot/data/plugins
-git clone https://github.com/<用户名>/astrbot_plugin_cucumber_rvc_console.git
+git clone https://github.com/AkinoSa/astrbot_plugin_cucumber_rvc_console.git
 ```
 
 或下载 Release 包解压到插件目录,然后在 AstrBot WebUI → 插件管理 → 启用并加载(依赖 `gradio_client`、`aiohttp` 自动安装)。
@@ -78,12 +78,12 @@ git clone https://github.com/<用户名>/astrbot_plugin_cucumber_rvc_console.git
 ## 后端准备(cucumber-rvc-gateway)
 
 1. 准备 RVC 整合包的 assets:`weights`(音色 .pth)、`indices`、`pymss_weights`(3HP 分离模型)、`hubert_base`、`rmvpe`;
-2. 获取网关:[仓库地址](https://github.com/<用户名>/cucumber-rvc-gateway)(独立项目、独立部署、独立版本);
+2. 获取网关:[仓库地址](https://github.com/AkinoSa/cucumber-rvc-gateway)(独立项目、独立部署、独立版本);
 3. `cp .env.example .env`,按注释填写模型目录、工作目录、AstrBot plugin_data 路径与端口;
 4. `docker compose up -d --build`,启动自检会逐项报告模型/目录状态;
 5. 测试:`curl http://127.0.0.1:3333/`。
 
-部署拓扑支持:同机 Docker、跨容器、跨主机——只要 AstrBot 能访问到 `rvc_base_url`。完整说明见 **[Gateway README](https://github.com/<用户名>/cucumber-rvc-gateway)**。
+部署拓扑支持:同机 Docker、跨容器、跨主机——只要 AstrBot 能访问到 `rvc_base_url`。完整说明见 **[Gateway README](https://github.com/AkinoSa/cucumber-rvc-gateway)**。
 
 ## 配置要点
 
