@@ -6,13 +6,25 @@
       /vol1/@apphome/astrbot/penv/bin/python3 astrbot_plugin_cucumber_rvc_console/tests/test_custom_autopick.py
 """
 import asyncio
+import os
 import inspect
 import json
 import sys
 import types
 from types import SimpleNamespace
 
-PLUGINS = "<AstrBot 数据目录>/astrbot/data/plugins"
+# 环境自适应:NAS 实机 → 开发镜像 → 本地仓库;均不可用时跳过
+_CANDIDATE_PLUGINS = [
+    "<AstrBot 数据目录>/astrbot/data/plugins",
+    "/vol1/@appdata/astrbot/data/plugins",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+]
+PLUGINS = next((p for p in _CANDIDATE_PLUGINS
+                if os.path.isdir(os.path.join(p, "astrbot_plugin_cucumber_rvc_console"))),
+               None)
+if PLUGINS is None:
+    print("test_custom_autopick: SKIP(未找到 AstrBot 插件目录,需 NAS 实机环境)")
+    raise SystemExit(0)
 sys.path.insert(0, PLUGINS)
 
 import importlib
