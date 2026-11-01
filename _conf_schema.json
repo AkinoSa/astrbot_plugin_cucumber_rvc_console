@@ -1,0 +1,946 @@
+{
+  "basic": {
+    "description": "基础设置",
+    "type": "object",
+    "hint": "最常用的几项：功能开关、翻唱时长、推理超时、默认移调。音色选择在「RVC 音色与推理」卡片里。",
+    "items": {
+      "enable_rvc": {
+        "description": "启用RVC推理引擎",
+        "type": "bool",
+        "hint": "开启后允许使用 RVC 模型翻唱（命令 /rvc、LLM 工具 rvc_cover / smart_cover、本地音频翻唱）。关闭后这些入口都会提示功能已关闭。",
+        "default": true
+      },
+      "chorus_seconds": {
+        "description": "翻唱时长/目标片段（秒）",
+        "type": "int",
+        "hint": "chorus 模式：中间层先切「目标 + 5 秒」的候选片段去做分离（多出的 5 秒是缓冲，让分离边界更干净），分离推理完成后会在这段候选里挑「目标 ~ 目标+5 秒」之间最优的一段作为最终输出（不是死板固定目标长度）。例：配 25 → 最终 25~30 秒；配 20 → 20~25 秒；候选长度受源音频实际长度限制。custom 模式从头取固定时长、不加缓冲。full（整首）当前网关明确拒绝。",
+        "default": 20,
+        "minimum": 20,
+        "maximum": 180
+      },
+      "render_mode": {
+        "description": "翻唱模式",
+        "type": "string",
+        "hint": "chorus=副歌片段（推荐，自动挑段+分离后精挑）；custom=从歌曲开头取固定时长（不加缓冲）。full（整首）需要整首歌分离与推理，本机资源不允许，网关会明确拒绝并返回错误。",
+        "options": [
+          "chorus",
+          "custom"
+        ],
+        "labels": [
+          "副歌片段（默认，最快）",
+          "整首翻唱（很慢，显存占用高）",
+          "自定义时长"
+        ],
+        "default": "chorus"
+      },
+      "inference_timeout": {
+        "description": "推理超时（秒）",
+        "type": "int",
+        "hint": "等待网关完成分离+推理的最长时间。15 秒片段实测约 130 秒、20 秒约 170 秒，建议 ≥600。",
+        "default": 600
+      },
+      "default_key_shift": {
+        "description": "默认音调调整",
+        "type": "int",
+        "hint": "当用户未指定时使用的默认音调调整值（-12到12）",
+        "default": 0
+      }
+    }
+  },
+  "selection": {
+    "description": "选歌与交互",
+    "type": "object",
+    "hint": "自动选歌对 /rvc 命令与自然语言翻唱生效（两条入口共用同一套评分）。",
+    "items": {
+      "auto_pick_song": {
+        "description": "自动选歌（/rvc 与自然语言通用）",
+        "type": "bool",
+        "default": true,
+        "hint": "开启后：/rvc 晴天 在候选可信时直接选最像原唱的一首，不弹歌曲菜单；自然语言（如「睦，翻唱晴天」）走同一套评分逻辑（不再各自实现）。候选取信度不足时按下方「菜单回退」处理；用户点名版本（女声版/DJ版等）会被尊重。"
+      },
+      "auto_pick_fallback_menu": {
+        "description": "候选不可信时回退手动选歌菜单",
+        "type": "bool",
+        "default": true,
+        "hint": "开启：/rvc 候选区分度不足时弹菜单；关闭：直接说明找不到可信原唱。自然语言入口本来就不弹菜单，会走严格匹配兜底。"
+      },
+      "auto_pick_model": {
+        "description": "自动使用默认音色（不弹音色菜单）",
+        "type": "bool",
+        "default": true,
+        "hint": "开启且「默认音色」有效时：/rvc 命令直接用默认音色开唱；自然语言入口本就按偏好/默认选择，不受此项影响。"
+      },
+      "auto_pick_min_score": {
+        "description": "自动选歌的最低评分，低于此值保留菜单",
+        "type": "float",
+        "default": 45.0
+      },
+      "auto_pick_min_margin": {
+        "description": "自动选歌时第一名与第二名的最小分差，低于此值保留菜单",
+        "type": "float",
+        "default": 8.0
+      },
+      "source_order": {
+        "description": "取歌音源顺序（同时决定启停）",
+        "type": "list",
+        "hint": "按列表顺序依次尝试：前一个平台搜不到、选不出或下载不下来，就自动换下一个，日志里每个平台一行结果。默认顺序：netease（网易云）→ kugou（酷狗）→ kuwo（酷我）→ qqmusic（QQ音乐）。每行写一个英文平台标识，只认这四个；删掉某一行就等于停用该平台，列表清空则退回默认顺序。顺序里的第一个源通常是主源；网易云用本插件自己的取歌链路，酷狗/酷我/QQ 音乐复用点歌插件 astrbot_plugin_music 的平台实现和配置（QQ 音乐需要点歌插件里配置了 uin，否则自动跳过并记日志）。",
+        "default": [
+          "netease",
+          "kugou",
+          "kuwo",
+          "qqmusic"
+        ]
+      },
+      "timeout": {
+        "description": "等待用户选择的超时时间（秒）",
+        "type": "int",
+        "hint": "等待用户选择歌曲或模型的最大时间",
+        "default": 30
+      },
+      "smart": {
+        "description": "对话与通知",
+        "type": "object",
+        "hint": "自然语言入口、确认机制、批量翻唱与进度/通知开关。",
+        "items": {
+          "enable_smart_cover": {
+            "description": "对话翻唱（LLM 直接响应翻唱请求）",
+            "type": "bool",
+            "hint": "提供一键智能翻唱工具，自动完成搜索+选择+翻唱全流程。用户只需说'翻唱《歌名》'即可。",
+            "default": true
+          },
+          "enable_enhanced_context": {
+            "description": "详细搜索结果",
+            "type": "bool",
+            "hint": "优化搜索结果返回格式，增加结构化信息帮助LLM更好地记住选项和上下文。",
+            "default": true
+          },
+          "enable_confirm_mechanism": {
+            "description": "选择确认机制",
+            "type": "bool",
+            "hint": "提供确认选择工具，在执行重要操作前让LLM确认用户意图，支持'就这个''换一个''确定'等自然语言指令。",
+            "default": true
+          },
+          "enable_batch_cover": {
+            "description": "批量翻唱",
+            "type": "bool",
+            "hint": "支持一次请求翻唱多首歌曲，用户可以说'帮我翻唱这三首歌：《A》《B》《C》'。",
+            "default": true
+          },
+          "enable_preference_learning": {
+            "description": "偏好学习与推荐",
+            "type": "bool",
+            "hint": "记录用户常用的模型、音调偏好等，下次翻唱时能推荐最合适配置。数据保存在 data 目录下。",
+            "default": true
+          },
+          "llm_force_mode": {
+            "description": "LLM强制模式 - 禁用所有手动命令",
+            "type": "bool",
+            "hint": "开启后，/rvc 等手动命令将被禁用，只能通过对话让 LLM 自动调用翻唱工具。",
+            "default": false
+          },
+          "enable_inject_context": {
+            "description": "把翻唱结果注入 LLM 对话记忆",
+            "type": "bool",
+            "hint": "开启后，翻唱任务完成、失败或缓存命中时，会把结果写入LLM的对话上下文中，让LLM记住任务真实状态。这样用户再次请求时LLM不会误以为任务还在进行中。",
+            "default": true
+          },
+          "enable_llm_success_notify": {
+            "description": "成功通知 · LLM 人格播报",
+            "type": "bool",
+            "hint": "翻唱成功后让 LLM 按当前会话人格说一句话（用哪个人格见下方「播报使用的人格 ID」）。失败通知始终会发，不受此开关控制。",
+            "default": true
+          },
+          "notify_progress": {
+            "description": "过程通知 · 翻唱进度",
+            "type": "bool",
+            "hint": "翻唱过程中向群聊发送「正在找音源/分离中」等进度。默认关闭（过程只写日志），打开后每次翻唱会多几条消息，刷屏慎开。",
+            "default": false
+          },
+          "notify_retry": {
+            "description": "过程通知 · 重试提示",
+            "type": "bool",
+            "hint": "发送失败触发自动重试时向群聊提示一句。默认关闭，重试详情始终写日志。",
+            "default": false
+          },
+          "enable_config_report": {
+            "description": "成功通知 · 模板配置报告",
+            "type": "bool",
+            "hint": "翻唱成功后发送一条固定格式的报告（本次使用的音色、音调、片段等），方便核对参数。它和「成功通知 · LLM 播报」是两个独立开关，可同时开、只开一个或都关。",
+            "default": true
+          }
+        }
+      }
+    }
+  },
+  "rvc": {
+    "description": "RVC 音色与推理",
+    "type": "object",
+    "hint": "网关地址、音色列表、默认音色与推理参数。刷新模型用命令 /刷新rvc模型（配置页没有刷新按钮）。",
+    "items": {
+      "rvc_base_url": {
+        "description": "RVC API Gradio 后端服务地址",
+        "type": "string",
+        "hint": "你的 Gradio API RVC 后端运行的地址，必须以 / 结尾。\n\n这个后端就是配套的中间层 chorus-mw（不是 RVC 整合包自带的 7897 WebUI）：https://github.com/void-HaoNan/chorus-mw 。\n中间层负责切副歌、分离、移调、变声、混音；插件只用 gradio_client 2.x（sse），直连 RVC 的 Gradio 3.14（ws）会报 Unknown protocol: ws，所以必须有这一层。\n本机默认 http://127.0.0.1:3333/ ；没起中间层时翻唱会失败，点歌不受影响。",
+        "default": "http://127.0.0.1:3333/"
+      },
+      "models": {
+        "description": "音色与模型列表",
+        "type": "object",
+        "hint": "模型列表来自网关 /model_info；刷新不会清空这里的任何选择。",
+        "items": {
+          "rvc_default_model": {
+            "description": "默认音色",
+            "type": "string",
+            "hint": "填网关音色目录里的模型文件名（如 rym.pth），留空 = 用列表第 1 个。可用模型见「模型管理」页（那里可一键设默认）。刷新模型不会清空这里的选择；所选模型被删时会保留原值并提示。",
+            "default": ""
+          },
+          "rvc_models_keywords": {
+            "description": "音色列表（别名与性别统一在下方编辑器维护）",
+            "type": "list",
+            "hint": "由「刷新模型」自动写入。本页不再直接编辑原始列表：别名和性别请在「音色与推理」分组的「音色列表」编辑器里改。",
+            "default": []
+          },
+          "rvc_models_dir": {
+            "description": "RVC 音色模型文件夹（可选核对项）",
+            "type": "string",
+            "hint": "模型列表由网关扫描真实目录提供，改这里不会改变网关的模型目录。留空 = 直接使用网关实际目录（推荐）；填了路径会在刷新模型时与网关核对，不一致时告警。",
+            "default": ""
+          }
+        }
+      },
+      "inference": {
+        "description": "推理参数",
+        "type": "object",
+        "hint": "音高算法与音色混合参数；修改后对下一次翻唱生效。",
+        "items": {
+          "f0_method": {
+            "description": "RVC音高提取算法（F0方法）",
+            "type": "string",
+            "hint": "可选值：rmvpe（默认，效果最好，适合干净人声）、crepe（效果好但更吃GPU，电音人声推荐）、harvest（ZLUDA/AMD模式下可能报tensor维度错误，不推荐）、pm（速度最快但效果一般）。遇到电音人声跑调时建议切换为crepe。",
+            "default": "rmvpe"
+          },
+          "index_rate": {
+            "description": "RVC特征检索比率（Index Rate）",
+            "type": "string",
+            "hint": "控制RVC推理时特征检索（Index）的权重。范围0~1，默认0.75。值越高越接近原模型音色但可能生硬，值越低模型自由发挥更多但可能偏离音色。电音人声沙哑时可尝试降低到0.5。",
+            "default": "0.75"
+          },
+          "rms_mix_rate": {
+            "description": "人声音量起伏贴合原唱的程度（rms_mix_rate）",
+            "type": "float",
+            "hint": "范围 0~1，默认 0.35。调大（往 1 靠）：成品音量起伏更贴原唱，唱得轻的地方也轻，听着更自然，但人声可能被压小；调小（往 0 靠）：音量更平稳、人声更冲，太小会显得发闷、没有起伏。常用区间 0.3~0.5。",
+            "default": 0.35,
+            "minimum": 0,
+            "maximum": 1
+          },
+          "protect": {
+            "description": "保护清音与气声的程度（protect）",
+            "type": "float",
+            "hint": "范围 0~0.5，默认 0.33。调大：齿音、换气、气声这些轻的地方更不容易被电音化、撕裂感和沙音更少；调小：这些细节更贴模型音色，但容易出现电流味。电音/高音失真时往 0.4~0.5 调，想更贴音色往 0.2 调。",
+            "default": 0.33,
+            "minimum": 0,
+            "maximum": 0.5
+          },
+          "max_batch_size": {
+            "description": "批量翻唱最大数量",
+            "type": "int",
+            "hint": "单次批量翻唱的最大歌曲数量限制，防止滥用",
+            "default": 5
+          }
+        }
+      }
+    }
+  },
+  "tuning": {
+    "description": "自动升降调与调音",
+    "type": "object",
+    "hint": "移调策略与性别配置。手动指定升降调永远优先于自动结果。",
+    "items": {
+      "shift": {
+        "description": "移调策略",
+        "type": "object",
+        "hint": "歌手与模型性别不同才自动移调；未知性别不猜、不调。",
+        "items": {
+          "enable_auto_key_shift": {
+            "description": "启用自动升降调（根据原曲歌手与模型性别自动调整音调）",
+            "type": "bool",
+            "hint": "开启后，当用户未手动指定升降调时，插件会自动识别原曲歌手性别和模型性别，性别不同时自动应用升降调。例如：男歌手的歌用女声模型翻唱时自动升调，女歌手的歌用男声模型翻唱时自动降调。手动指定了升降调值时不会覆盖。",
+            "default": false
+          },
+          "male_to_female_shift": {
+            "description": "男→女 升调值（半音数）",
+            "type": "int",
+            "hint": "当原曲歌手为男、模型为女声时自动升调的半音数。RVC官方推荐+12，可根据实际效果调整（如+8更保守）。",
+            "default": 12,
+            "minimum": -24,
+            "maximum": 24
+          },
+          "female_to_male_shift": {
+            "description": "女→男 降调值（半音数）",
+            "type": "int",
+            "hint": "当原曲歌手为女、模型为男声时自动降调的半音数。RVC官方推荐-12，可根据实际效果调整（如-8更保守）。",
+            "default": -12,
+            "minimum": -24,
+            "maximum": 24
+          },
+          "gender_detection_timeout": {
+            "description": "自动升降调性别识别超时（秒）",
+            "type": "int",
+            "hint": "嵌套LLM判断歌手/歌曲/模型性别的最长等待时间。超时后会跳过或使用本地规则继续翻唱，不会阻塞中间层。",
+            "default": 15,
+            "minimum": 3,
+            "maximum": 60
+          },
+          "enable_auto_key_shift_debug": {
+            "description": "自动升降调调试信息输出到群聊",
+            "type": "bool",
+            "hint": "开启后，LLM判断歌手性别、模型性别以及自动升降调的过程会实时输出到群聊中，方便排查自动升降调是否正常工作。",
+            "default": false
+          }
+        }
+      },
+      "gender": {
+        "description": "性别配置（唯一入口）",
+        "type": "object",
+        "hint": "模型性别只在这里配置一份；已配置的模型不再调用 LLM。歌手性别用命令 /设置歌手性别 配置。",
+        "items": {
+          "model_genders": {
+            "description": "模型性别（每个音色一个下拉）",
+            "type": "object",
+            "items": {
+              "deng": {
+                "description": "deng.pth",
+                "type": "string",
+                "options": [
+                  "未知",
+                  "男声",
+                  "女声"
+                ],
+                "default": "未知"
+              },
+              "nuoyemu": {
+                "description": "nuoyemu.pth",
+                "type": "string",
+                "options": [
+                  "未知",
+                  "男声",
+                  "女声"
+                ],
+                "default": "未知"
+              },
+              "rym": {
+                "description": "rym.pth",
+                "type": "string",
+                "options": [
+                  "未知",
+                  "男声",
+                  "女声"
+                ],
+                "default": "未知"
+              }
+            },
+            "hint": "唯一权威的模型性别配置：每个音色选 男声/女声/未知。已明确配置的模型不再调用 LLM 判断性别；未知=不参与自动升降调（不猜）。网关新增的模型请用命令 /设置模型性别 <模型名> <男声|女声> 设置（会存到隐藏的 extra 里）。"
+          },
+          "model_genders_extra": {
+            "description": "schema 外模型的性别（自动维护）",
+            "type": "dict",
+            "default": {},
+            "invisible": true,
+            "hint": "由 /设置模型性别 自动写入；Schema 里没有下拉位的模型（比如以后新增的）存在这里，不会被配置完整性检查删除。"
+          },
+          "artist_gender_map": {
+            "description": "歌手性别映射",
+            "type": "list",
+            "hint": "推荐用命令 /设置歌手性别 <歌手> <男声|女声|未知> 配置，不用手拼字符串。优先级最高，未配置的歌手才走 LLM；歌手性别与模型性别是两回事，分开处理。",
+            "default": []
+          },
+          "model_gender_map": {
+            "description": "旧版模型性别列表（已迁移，保留兼容）",
+            "type": "list",
+            "hint": "CUSTOM-4 起模型性别统一到「模型性别」下拉。这里只用于一次性迁移旧配置，迁移完成后会被自动清空；不要在这里手填，否则下次启动会合并进统一配置。",
+            "default": [],
+            "invisible": true
+          }
+        }
+      },
+      "notify_persona_id": {
+        "description": "播报使用的人格 ID",
+        "type": "string",
+        "default": "",
+        "hint": "翻唱完成后让 LLM 用这个人格说话；留空则自动解析当前会话人格（解析不到时会退回通用助手，日志会写明用了哪个）。"
+      }
+    }
+  },
+  "separation": {
+    "description": "音频分离与输出",
+    "type": "object",
+    "hint": "分离模型由网关固定（3_HP-Vocal-UVR.pth）；标⚠️的参数当前网关不使用。",
+    "items": {
+      "vocal_volume_db": {
+        "description": "人声音量（dB）",
+        "type": "float",
+        "hint": "范围 -12~+12，默认 0（0 表示不增不减）。调大：人声更靠前、更抢耳；调小：人声往后退、更像混在伴奏里。人声太尖太吵就往 -3 左右调，人声太弱就往 +3 左右调。",
+        "default": 0.0,
+        "minimum": -12,
+        "maximum": 12
+      },
+      "inst_volume_db": {
+        "description": "伴奏音量（dB）⚠️当前网关不使用",
+        "type": "float",
+        "hint": "⚠️ 当前 Gateway 只输出人声、不混伴奏，这个值不会生效；保留仅为兼容旧配置。",
+        "default": -6.0,
+        "minimum": -20,
+        "maximum": 0
+      },
+      "shift_accompaniment": {
+        "description": "伴奏同步移调 ⚠️当前网关不使用",
+        "type": "bool",
+        "hint": "⚠️ 当前 Gateway 不输出伴奏，此开关不会生效；保留仅为兼容旧配置。",
+        "default": true
+      },
+      "output": {
+        "description": "输出",
+        "type": "object",
+        "hint": "音频回传方式。",
+        "items": {
+          "enable_send_file": {
+            "description": "推理完成后同时以文件形式发送到群聊",
+            "type": "bool",
+            "hint": "开启后，翻唱完成时除了发送语音消息外，还会以文件附件的形式再发送一份到群聊，方便群友下载保存。关闭则只发送语音消息。",
+            "default": false
+          },
+          "enable_fade": {
+            "description": "输出首尾淡入淡出 0.5 秒",
+            "type": "bool",
+            "default": true,
+            "hint": "开启后成品开头 0.5 秒淡入、结尾 0.5 秒淡出，避免剪辑点突兀和爆音。由网关处理（需网关支持 fade_seconds；不支持时自动跳过并在日志提示）。"
+          }
+        }
+      },
+      "reverb_enabled": {
+        "description": "人声 Reverb 混响（卷积）",
+        "type": "bool",
+        "default": false,
+        "hint": "RVC 转换完成后对人声施加真正的卷积混响（合成脉冲响应 + FFT 卷积），带自然尾音与空间感；只影响人声。默认关闭，开启后与下面 7 个参数配合使用。"
+      },
+      "reverb_wet": {
+        "description": "混响湿声比例（Wet）",
+        "type": "float",
+        "default": 0.18,
+        "minimum": 0.0,
+        "maximum": 0.5,
+        "hint": "混响信号的能量比例，0.18 轻微空间感、0.3 以上明显；过大会浑浊。"
+      },
+      "reverb_dry": {
+        "description": "干声保留比例（Dry）",
+        "type": "float",
+        "default": 1.0,
+        "minimum": 0.5,
+        "maximum": 1.0,
+        "hint": "原始人声的保留音量，1.0 为完全不衰减。"
+      },
+      "reverb_room_size": {
+        "description": "房间大小（Room Size）",
+        "type": "float",
+        "default": 0.65,
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "hint": "0=小房间（早反射密、贴脸），1=大厅堂（早反射拉开、空间感强）。"
+      },
+      "reverb_decay": {
+        "description": "尾音长度（Decay，秒）",
+        "type": "float",
+        "default": 1.4,
+        "minimum": 0.2,
+        "maximum": 4.0,
+        "hint": "混响尾音衰减到 -60dB 的时长（秒），1.4s 是自然室内感；太长会糊。"
+      },
+      "reverb_damping": {
+        "description": "高频衰减（Damping）",
+        "type": "float",
+        "default": 0.45,
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "hint": "尾音里高频衰减的速度：0=明亮（玻璃房），1=很暗（厚窗帘）。"
+      },
+      "reverb_pre_delay": {
+        "description": "预延迟（Pre-delay，毫秒）",
+        "type": "float",
+        "default": 18.0,
+        "minimum": 0.0,
+        "maximum": 100.0,
+        "hint": "干声与第一反射之间的延迟，能拉开人声与空间的距离感；10~30ms 比较自然。"
+      },
+      "reverb_width": {
+        "description": "立体声宽度（Stereo Width）",
+        "type": "float",
+        "default": 0.8,
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "hint": "0=单声道混响，1=左右声道完全去相关（开阔）。"
+      },
+      "echo": {
+        "description": "legacy aecho 回声（高级，默认关）",
+        "type": "object",
+        "hint": "CUSTOM-6.9 的旧回声效果，保留给想特意要回声感的情况。与上面的 Reverb 互斥：Reverb 开启时本组不生效。这是「重复声」，不是混响。",
+        "items": {
+          "echo_enabled": {
+            "description": "启用 aecho 回声",
+            "type": "bool",
+            "default": false,
+            "hint": "仅当上面的「人声 Reverb 混响」关闭时生效。"
+          },
+          "echo_wet": {
+            "description": "回声湿声比例",
+            "type": "float",
+            "default": 0.15,
+            "minimum": 0.0,
+            "maximum": 0.5
+          },
+          "echo_decay": {
+            "description": "每级回声衰减系数",
+            "type": "float",
+            "default": 0.4,
+            "minimum": 0.05,
+            "maximum": 0.9
+          }
+        }
+      }
+    }
+  },
+  "tts": {
+    "description": "TTS 语音回复",
+    "type": "object",
+    "hint": "CUSTOM-7：LLM 回复转 RVC 音色语音。复用 AstrBot 已配置的 TTS 服务商生成原始语音，再用 TTS 专属模型换声；与歌曲翻唱的模型和参数完全独立，互不影响。",
+    "items": {
+      "tts_enable": {
+        "description": "启用 TTS 语音回复",
+        "type": "bool",
+        "default": false,
+        "hint": "总开关。开启后，群里 @Bot 说「我想听你说」「用声音回复我」等（见触发设置），会把 LLM 回复转成音色语音一起发送；失败自动降级为纯文字。"
+      },
+      "tts_provider_name": {
+        "description": "TTS 服务商（provider ID）",
+        "type": "string",
+        "default": "",
+        "hint": "留空=使用当前会话正在使用的 TTS 服务商（没有则用第 1 个已配置实例）。填 AstrBot 服务商配置里的 provider ID 可精确指定；不会重复要求 API Key。"
+      },
+      "model": {
+        "description": "TTS 音色模型（与歌曲翻唱独立）",
+        "type": "object",
+        "hint": "TTS 专用音色；歌曲翻唱用什么模型不影响这里，反之亦然。模型列表来自网关 /model_info。",
+        "items": {
+          "tts_rvc_model": {
+            "description": "TTS 音色模型",
+            "type": "string",
+            "default": "rym.pth",
+            "hint": "留空 = 用网关模型列表第 1 个；可直接填写网关音色目录里的模型文件名。某模型没有配对 index 时自动按无索引推理。也可在「TTS 控制台」用下拉选择（网关动态列表）。"
+          }
+        }
+      },
+      "inference": {
+        "description": "TTS 推理参数（独立于歌曲翻唱）",
+        "type": "object",
+        "hint": "只作用于 TTS 语音转换；改这里不会影响歌曲翻唱的音色与效果。",
+        "items": {
+          "tts_pitch": {
+            "description": "音调（半音）",
+            "type": "int",
+            "default": 0,
+            "minimum": -24,
+            "maximum": 24,
+            "hint": "TTS 原始声音到目标音色的音高偏移；若 TTS 本身是标准女声/男声，通常 0 即可。"
+          },
+          "tts_f0_method": {
+            "description": "F0 提取算法",
+            "type": "string",
+            "options": [
+              "rmvpe",
+              "pm"
+            ],
+            "default": "rmvpe",
+            "hint": "rmvpe 更稳，pm 更快；当前网关只支持这两种。"
+          },
+          "tts_index_rate": {
+            "description": "特征检索比率（Index Rate）",
+            "type": "string",
+            "default": "0.75",
+            "hint": "0~1，越高越贴模型音色。模型无 index 时自动按 0 处理。"
+          },
+          "tts_protect": {
+            "description": "清音保护（Protect）",
+            "type": "float",
+            "default": 0.33,
+            "minimum": 0.0,
+            "maximum": 0.5,
+            "hint": "保护齿音与气声，0.33 左右通常够用。"
+          },
+          "tts_rms_mix_rate": {
+            "description": "音量包络贴合（RMS Mix Rate）",
+            "type": "float",
+            "default": 0.35,
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "tts_resample_sr": {
+            "description": "输出重采样率",
+            "type": "int",
+            "default": 0,
+            "minimum": 0,
+            "maximum": 48000,
+            "hint": "0=不重采样。"
+          },
+          "tts_output_format": {
+            "description": "输出格式",
+            "type": "string",
+            "options": [
+              "wav",
+              "mp3",
+              "flac",
+              "m4a"
+            ],
+            "default": "wav",
+            "hint": "QQ 语音建议 wav 或 mp3。"
+          },
+          "tts_timeout": {
+            "description": "单次 TTS 转换超时（秒）",
+            "type": "int",
+            "default": 300,
+            "minimum": 60,
+            "maximum": 1800
+          }
+        }
+      },
+      "trigger": {
+        "description": "触发与冷却",
+        "type": "object",
+        "hint": "自然语言触发规则。判定顺序：点歌拒绝 > 歌曲翻唱 > TTS；「唱」「翻唱」「变声」等词永远不会触发 TTS。",
+        "items": {
+          "tts_group_trigger": {
+            "description": "群聊允许 TTS 语音回复",
+            "type": "bool",
+            "default": true,
+            "hint": "开关语义:开启 = 群聊里可以触发 TTS;关闭 = 群聊彻底不触发(只有私聊会)。触发是否必须 @机器人由下一项「群聊触发是否必须 @机器人」单独控制。"
+          },
+          "tts_group_require_at": {
+            "description": "群聊触发必须 @机器人",
+            "type": "bool",
+            "default": true,
+            "hint": "开启后群聊必须 @机器人 才触发(强烈建议,防误触)。关闭后群聊里说出「我想听你说」这类短语就回复语音,不需要 @——误触发风险升高,建议配合调大冷却时间。"
+          },
+          "tts_allow_refuse": {
+            "description": "允许人格拒绝朗读",
+            "type": "bool",
+            "default": false,
+            "hint": "开启后，人格可以在反应文字里拒绝开口，此时只发文字不发语音（二次调用输出「空」）。关闭（默认）时反应归反应、朗读照做——不情愿的情绪放在反应里说，台词照读；只有违法/严重人身攻击等内容才不出声。"
+          },
+          "tts_repeat_delay": {
+            "description": "复读间隔（语音发出后 N 秒内不再触发）",
+            "type": "int",
+            "default": 0,
+            "minimum": 0,
+            "maximum": 600,
+            "hint": "从上一条语音**实际发出**的时刻起算（区别于按触发时刻算的用户冷却），0 = 关闭。想让人说完一句歇一下再接下一句，设 5~15 秒。"
+          },
+          "tts_queue_limit": {
+            "description": "TTS 队列长度",
+            "type": "int",
+            "default": 3,
+            "minimum": 0,
+            "maximum": 10,
+            "hint": "同一时间只跑一个 TTS 转换，其余排队（与歌曲翻唱队列同构，网关全局串行）；0 = 不排队，满载直接跳过。"
+          },
+          "tts_private_trigger": {
+            "description": "私聊允许触发",
+            "type": "bool",
+            "default": true
+          },
+          "tts_user_cooldown": {
+            "description": "单个用户冷却（秒）",
+            "type": "int",
+            "default": 15,
+            "minimum": 0,
+            "maximum": 3600,
+            "hint": "同一用户两次 TTS 语音回复的最小间隔；想连续复读/连说建议 10~15 秒；0=不限制（不建议，容易被打爆 CPU）。"
+          },
+          "tts_group_cooldown": {
+            "description": "单个群冷却（秒）",
+            "type": "int",
+            "default": 15,
+            "minimum": 0,
+            "maximum": 3600
+          },
+          "tts_max_text_chars": {
+            "description": "朗读文本长度上限（字符）",
+            "type": "int",
+            "default": 200,
+            "minimum": 20,
+            "maximum": 500,
+            "hint": "超长的回复只朗读前 N 个字符（文字仍完整发送）。"
+          },
+          "tts_degrade_on_fail": {
+            "description": "失败时降级为纯文字",
+            "type": "bool",
+            "default": true,
+            "hint": "TTS/转换任一环节失败时只发文字，不影响聊天主流程；关闭时失败会保持静默。"
+          }
+        }
+      },
+      "reverb": {
+        "description": "TTS Reverb（独立于歌曲混响）",
+        "type": "object",
+        "hint": "只作用于 TTS 转换后的语音，与歌曲翻唱的混响配置互不影响。参数含义同「音频效果」里的 Reverb。",
+        "items": {
+          "tts_reverb_enabled": {
+            "description": "TTS 语音混响",
+            "type": "bool",
+            "default": false
+          },
+          "tts_reverb_wet": {
+            "description": "湿声比例（Wet）",
+            "type": "float",
+            "default": 0.18,
+            "minimum": 0.0,
+            "maximum": 0.5
+          },
+          "tts_reverb_dry": {
+            "description": "干声保留比例（Dry）",
+            "type": "float",
+            "default": 1.0,
+            "minimum": 0.5,
+            "maximum": 1.0
+          },
+          "tts_reverb_room_size": {
+            "description": "房间大小（Room Size）",
+            "type": "float",
+            "default": 0.65,
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "tts_reverb_decay": {
+            "description": "尾音长度（Decay，秒）",
+            "type": "float",
+            "default": 1.4,
+            "minimum": 0.2,
+            "maximum": 4.0
+          },
+          "tts_reverb_damping": {
+            "description": "高频衰减（Damping）",
+            "type": "float",
+            "default": 0.45,
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "tts_reverb_pre_delay": {
+            "description": "预延迟（Pre-delay，毫秒）",
+            "type": "float",
+            "default": 18.0,
+            "minimum": 0.0,
+            "maximum": 100.0
+          },
+          "tts_reverb_width": {
+            "description": "立体声宽度（Stereo Width）",
+            "type": "float",
+            "default": 0.8,
+            "minimum": 0.0,
+            "maximum": 1.0
+          }
+        }
+      }
+    }
+  },
+  "local_audio": {
+    "description": "本地音频翻唱",
+    "type": "object",
+    "hint": "发送语音/音频文件让它翻唱时的相关设置，全部集中在这一张卡片里。",
+    "items": {
+      "enable_local_audio_cover": {
+        "description": "启用本地音频文件翻唱",
+        "type": "bool",
+        "hint": "开启后，群友可以直接发送语音消息或音频文件（mp3/wav等）进行翻唱，不需要先搜索歌曲。适合群友自己唱歌让AI修音/换音色。",
+        "default": true
+      },
+      "max_local_audio_size_mb": {
+        "description": "本地音频文件最大大小限制（MB）",
+        "type": "int",
+        "hint": "超过此大小的音频文件会被拒绝，防止过大的文件导致推理过慢或爆显存。建议10-30MB。",
+        "default": 20,
+        "minimum": 1,
+        "maximum": 100
+      },
+      "local_audio_cache_ttl": {
+        "description": "本地音频缓存有效期（秒）",
+        "type": "int",
+        "hint": "用户发过的语音/音频在这个时间内可以直接用 /本地翻唱 复用，超时后要求重新发送。默认 300 秒。",
+        "default": 300,
+        "minimum": 10,
+        "maximum": 3600
+      },
+      "local_audio_trigger_keywords": {
+        "description": "本地音频自动触发关键词",
+        "type": "list",
+        "hint": "当群友发送语音/音频文件且文字中包含这些关键词时，自动触发本地翻唱。每行一个关键词。默认只留「翻唱」「变声」这类明确想唱的词；「转换」「处理」「修音」这种泛词会把只想聊天或点歌的消息也吞进来，不建议再加。",
+        "default": [
+          "翻唱",
+          "变声"
+        ]
+      },
+      "local_audio_auto_trigger": {
+        "description": "开启本地音频自动触发",
+        "type": "bool",
+        "hint": "默认关闭：开启后只要消息里带音频又碰到触发词就会自动翻唱，容易和点歌、普通聊天抢活。需要时再打开；关闭后仍可用 /本地翻唱 命令或 LLM 工具触发。",
+        "default": false
+      },
+      "local_audio_default_model": {
+        "description": "本地音频自动触发默认模型",
+        "type": "string",
+        "hint": "当自动触发本地翻唱且未指定模型时，默认使用的模型别名。留空则使用第一顺位模型。",
+        "default": ""
+      },
+      "local_audio_default_shift": {
+        "description": "本地音频自动触发默认音调",
+        "type": "int",
+        "hint": "当自动触发本地翻唱且未指定升降调时，默认的音调调整值（-12到12）。",
+        "default": 0,
+        "minimum": -24,
+        "maximum": 24
+      }
+    }
+  },
+  "sources": {
+    "description": "音乐源（网易云）",
+    "type": "object",
+    "hint": "取歌来源与鉴权。酷狗/酷我/QQ 音乐需要点歌插件 astrbot_plugin_music 才可用，未安装时会自动跳过并记日志。",
+    "items": {
+      "netease_quality": {
+        "description": "网易云取歌音质（kbps）",
+        "type": "int",
+        "hint": "只支持 128 / 192 / 320 三档，默认 320。备用 NodeJS 服务取歌时对应 level 参数：320→exhigh、192→higher、128→standard；meting 主路由它自己按接口给。填其它值会按 320 处理。",
+        "default": 320,
+        "minimum": 128,
+        "maximum": 320
+      },
+      "music_api_timeout": {
+        "description": "音乐搜索接口超时（秒）",
+        "type": "int",
+        "hint": "网易云搜索无响应时的最长等待时间，超时后返回明确错误，避免后台任务永久卡住。",
+        "default": 20,
+        "minimum": 5,
+        "maximum": 120
+      },
+      "netease_cookie": {
+        "description": "网易云 MUSIC_U（备用取歌路径用）",
+        "type": "string",
+        "hint": "在浏览器登录 music.163.com 后，从开发者工具 → Application → Cookies 里复制 MUSIC_U 的值（只填值，不要带 'MUSIC_U=' 前缀）。0.5.0 起取歌实现照搬点歌插件：主路 meting 不吃 cookie，不填也能下大部分歌；但会员歌/高音质要靠备用 NodeJS 服务带上这个 cookie 才拿得到。插件只保存在本机配置里，不会外传。",
+        "default": ""
+      },
+      "netease_meting_base": {
+        "description": "meting 取直链服务地址（主路）",
+        "type": "string",
+        "hint": "照搬点歌插件网易云平台的取直链方式：向「地址?type=song&id=歌曲id」要直链，返回的 url 直接下载。默认 https://api.qijieya.cn/meting/ ，不需要任何密钥；这个第三方服务哪天挂了，可以换成自建或其它 meting 实例。留空则用默认地址。",
+        "default": "https://api.qijieya.cn/meting/"
+      },
+      "netease_api_base": {
+        "description": "NodeJS 网易云 API 地址（备用路）",
+        "type": "string",
+        "hint": "取歌备用路，对应点歌插件 netease_api 平台：主路 meting 拿不到直链时才用它，先试 /song/url/v1?level=xxx（带 cookie 能下会员歌），再退回 /song/url。默认填点歌插件里那个 https://zm.wwoyun.cn ；本机起了 NeteaseCloudMusicApi 就填它的地址（例如服务在 3003 端口就填 http://127.0.0.1:3003）。留空表示不设备用路，只用 meting。",
+        "default": "https://zm.wwoyun.cn"
+      },
+      "netease_api_token": {
+        "description": "NodeJS 网易云 API 访问令牌（可选）",
+        "type": "string",
+        "hint": "备用取歌服务需要鉴权时填这里，插件会带上 Authorization: Bearer <令牌>。默认的 zm.wwoyun.cn 不需要，留空即可。",
+        "default": ""
+      },
+      "alert_admin_on_cookie_expired": {
+        "description": "管理员告警 · 网易云 Cookie 失效",
+        "type": "bool",
+        "hint": "连续 3 次取歌都因为 cookie 相关问题失败（没配置、401、接口 code 不对、只给试听）时，私聊管理员提醒更新 cookie；读不到 admins_id 时发到触发点歌的会话。",
+        "default": true
+      },
+      "cookie_alert_interval_hours": {
+        "description": "cookie 失效提醒最小间隔（小时）",
+        "type": "int",
+        "hint": "同一个失效状态在这段时间内只提醒一次，避免刷屏。取歌成功后状态立即清空，下次失效会重新提醒。",
+        "default": 6,
+        "minimum": 1,
+        "maximum": 168
+      }
+    }
+  },
+  "advanced": {
+    "description": "缓存、诊断与高级选项",
+    "type": "object",
+    "hint": "低频/诊断项。缓存用命令 /查看翻唱缓存、/清理翻唱缓存。",
+    "items": {
+      "gateway_work_dir": {
+        "description": "网关工作目录（宿主机路径）",
+        "type": "string",
+        "default": "",
+        "hint": "网关容器挂载的工作目录在宿主机上的实际路径（含 out/uploads/logs 子目录）。用于 /补发翻唱、TTS 历史回放与任务音频。留空则这些功能停用并提示。例：/home/user/rvc/gateway_work"
+      },
+      "task_timeout_seconds": {
+        "description": "翻唱任务超时时间（秒）",
+        "type": "int",
+        "hint": "任务超过这个时间未完成会自动释放状态。整首（full）模式处理长歌曲可能耗时较久，建议与 inference_timeout 保持一致。",
+        "default": 9000,
+        "minimum": 60,
+        "maximum": 14400
+      },
+      "enable_task_tracking": {
+        "description": "启用翻唱任务状态追踪",
+        "type": "bool",
+        "hint": "开启后，会追踪每个用户/群聊正在进行的翻唱任务，防止重复创建任务。同时LLM可以查询当前任务状态。如果任务卡死超过超时时间会自动清理。",
+        "default": true
+      },
+      "preference_storage_path": {
+        "description": "偏好数据存储路径",
+        "type": "string",
+        "hint": "留空 = data/plugin_data/astrbot_plugin_cucumber_rvc_console/user_preferences.json（推荐，跟其它插件的数据放一起，AstrBot 迁移/备份时不会漏）。填了就用填的路径；旧版默认的 data/user_preferences.json 会自动迁移过来。",
+        "default": ""
+      },
+      "qq_official_cards": {
+        "description": "自动识别 QQ 官方机器人并使用 Markdown 卡片",
+        "type": "bool",
+        "hint": "选歌、音色、翻唱状态、帮助和查询结果使用官方 Markdown 卡片。QQ群和单聊无需申请模板；频道需账号开通相应能力。按钮不可用时保留卡片，卡片发送失败才降级为文字。关闭后使用文字菜单。",
+        "default": true
+      },
+      "qq_official_buttons": {
+        "description": "自动识别 QQ 官方机器人并启用交互按钮",
+        "type": "bool",
+        "hint": "配合卡片开关使用。优先使用回调按钮选歌、选音色、翻页和取消，仅点歌者可操作。旧 WebSocket 连接未订阅互动事件时，临时使用点击自动发送的指令按钮，无需手动确认；重启平台连接后恢复回调。Webhook 需在 QQ 后台开启互动事件推送。关闭按钮仍保留 Markdown 卡片。",
+        "default": true
+      },
+      "cover_queue_limit": {
+        "description": "同时排队人数",
+        "type": "int",
+        "default": 3,
+        "minimum": 0,
+        "maximum": 10,
+        "hint": "同一时间只跑一个翻唱，其余排队；这里是最多允许几个等待者（0=不排队，超出直接提示）。"
+      },
+      "task_queue_limit": {
+        "description": "全局任务队列上限",
+        "type": "int",
+        "default": 10,
+        "minimum": 1,
+        "maximum": 50,
+        "hint": "CUSTOM-8：翻唱+TTS 所有处于「已接收/排队」状态的任务总数上限，超过时拒绝新任务并告知用户。"
+      },
+      "duplicate_window_seconds": {
+        "description": "重复提交检测窗口（秒）",
+        "type": "int",
+        "default": 120,
+        "minimum": 0,
+        "maximum": 3600,
+        "hint": "同一用户+同一会话+相同请求在该窗口内重复提交时提示「已在排队/处理」。只在先前的任务仍在进行中时生效；任务结束后不受限。"
+      },
+      "queue_position_notice": {
+        "description": "排队位置通知",
+        "type": "bool",
+        "default": true,
+        "hint": "任务进入队列且前方还有任务时，向原会话发一条「已加入队列，前面还有 N 个任务」。只在入队时发一次，不会刷屏。"
+      }
+    }
+  }
+}

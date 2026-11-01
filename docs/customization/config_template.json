@@ -1,0 +1,112 @@
+{
+  "basic": {
+    "enable_rvc": true,
+    "chorus_seconds": 25,
+    "render_mode": "chorus",
+    "inference_timeout": 600,
+    "default_key_shift": 0
+  },
+  "selection": {
+    "auto_pick_song": true,
+    "auto_pick_fallback_menu": true,
+    "auto_pick_model": true,
+    "auto_pick_min_score": 45.0,
+    "auto_pick_min_margin": 8.0,
+    "source_order": [
+      "netease",
+      "kugou",
+      "kuwo",
+      "qqmusic"
+    ],
+    "timeout": 30,
+    "smart": {
+      "enable_smart_cover": true,
+      "enable_enhanced_context": true,
+      "enable_confirm_mechanism": true,
+      "enable_batch_cover": true,
+      "enable_preference_learning": true,
+      "llm_force_mode": false,
+      "enable_inject_context": true,
+      "enable_llm_success_notify": true,
+      "notify_progress": false,
+      "notify_retry": false,
+      "enable_config_report": true
+    }
+  },
+  "rvc": {
+    "rvc_base_url": "http://127.0.0.1:3333/",
+    "models": {
+      "rvc_default_model": "deng",
+      "rvc_models_keywords": [
+        "deng.pth|||",
+        "nuoyemu.pth|||",
+        "rym.pth|||"
+      ],
+      "rvc_models_dir": ""
+    },
+    "inference": {
+      "f0_method": "rmvpe",
+      "index_rate": "0.75",
+      "rms_mix_rate": 0.35,
+      "protect": 0.4,
+      "max_batch_size": 5
+    }
+  },
+  "tuning": {
+    "shift": {
+      "enable_auto_key_shift": true,
+      "gender_detection_timeout": 15,
+      "male_to_female_shift": 12,
+      "female_to_male_shift": -12,
+      "enable_auto_key_shift_debug": true
+    },
+    "gender": {
+      "model_genders": {
+        "deng": "女声",
+        "nuoyemu": "女声",
+        "rym": "女声"
+      },
+      "artist_gender_map": [],
+      "model_gender_map": [],
+      "model_genders_extra": {}
+    }
+  },
+  "separation": {
+    "vocal_volume_db": 0.0,
+    "inst_volume_db": -6.0,
+    "shift_accompaniment": true,
+    "output": {
+      "enable_send_file": false
+    }
+  },
+  "local_audio": {
+    "enable_local_audio_cover": true,
+    "max_local_audio_size_mb": 20,
+    "local_audio_cache_ttl": 300,
+    "local_audio_trigger_keywords": [
+      "翻唱",
+      "变声",
+      "我想听"
+    ],
+    "local_audio_auto_trigger": false,
+    "local_audio_default_model": "",
+    "local_audio_default_shift": 0
+  },
+  "sources": {
+    "netease_quality": 320,
+    "music_api_timeout": 20,
+    "netease_cookie": "",
+    "netease_meting_base": "https://api.qijieya.cn/meting/",
+    "netease_api_base": "https://zm.wwoyun.cn",
+    "netease_api_token": "",
+    "alert_admin_on_cookie_expired": true,
+    "cookie_alert_interval_hours": 6
+  },
+  "advanced": {
+    "task_timeout_seconds": 9000,
+    "enable_task_tracking": true,
+    "preference_storage_path": "",
+    "qq_official_cards": true,
+    "qq_official_buttons": true
+  }
+}

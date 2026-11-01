@@ -1,0 +1,15 @@
+name: astrbot_plugin_cucumber_rvc_console
+display_name: RVC 控制台
+desc: 说一句「翻唱《歌名》」就自动取歌、切副歌、RVC 变声、混音发回群聊；需自备 RVC 整合包与 chorus-mw 中间层
+version: 1.0.0
+author: void-HaoNan
+repo: "https://github.com/void-HaoNan/astrbot-plugin-chorus-cover"
+astrbot_version: ">=4.16,<5"
+tags:
+  - 音乐
+  - RVC
+  - 翻唱
+  - 语音合成
+support_platforms:
+  - aiocqhttp
+  - qq_official

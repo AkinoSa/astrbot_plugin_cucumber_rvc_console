@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RVC 控制台</title>
+<link rel="stylesheet" href="assets/app.css?v=1.0.0-r10" />
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand">
+      <img class="logo" src="assets/logo.png?v=1.0.0-r10" alt="logo" />
+      <span class="brand-text">RVC 控制台</span>
+    </div>
+    <nav class="nav" id="nav">
+      <button class="nav-item active" data-tab="overview" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-4H4v4Zm10-13h6V4h-6v3Z"/></svg>
+        <span>概览</span>
+      </button>
+      <button class="nav-item" data-tab="tasks" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v3H4V5Zm0 5.5h16v3H4v-3ZM4 16h10v3H4v-3Z"/></svg>
+        <span>任务</span>
+      </button>
+      <button class="nav-item" data-tab="rvc" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Zm-7 8h2a5 5 0 0 0 10 0h2a7 7 0 0 1-6 6.9V21h-2v-3.1A7 7 0 0 1 5 11Z"/></svg>
+        <span>RVC 控制台</span>
+      </button>
+      <button class="nav-item" data-tab="tts" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4Zm-8 9h2a6 6 0 0 0 12 0h2a8 8 0 0 1-7 7.9V21h3v2H8v-2h3v-2.1A8 8 0 0 1 4 11Z"/></svg>
+        <span>TTS 控制台</span>
+      </button>
+      <button class="nav-item" data-tab="models" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 7.5 12 12l9-4.5L12 3Zm-9 9 9 4.5 9-4.5-2.2-1.1L12 14.4 5.2 10.9 3 12Zm0 4.5 9 4.5 9-4.5-2.2-1.1L12 18.9 5.2 15.4 3 16.5Z"/></svg>
+        <span>模型管理</span>
+      </button>
+      <button class="nav-item" data-tab="audio" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3Zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4Z"/></svg>
+        <span>音频效果</span>
+      </button>
+      <button class="nav-item" data-tab="settings" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8.9 4a6.9 6.9 0 0 1-.1 1.2l2 1.5-2 3.4-2.3-.9a7 7 0 0 1-2 1.2l-.3 2.4h-4l-.3-2.4a7 7 0 0 1-2-1.2l-2.3.9-2-3.4 2-1.5A6.9 6.9 0 0 1 3.1 12c0-.4 0-.8.1-1.2l-2-1.5 2-3.4 2.3.9a7 7 0 0 1 2-1.2l.3-2.4h4l.3 2.4a7 7 0 0 1 2 1.2l2.3-.9 2 3.4-2 1.5c.1.4.1.8.1 1.2Z"/></svg>
+        <span>插件设置</span>
+      </button>
+    </nav>
+    <nav class="nav nav-bottom">
+      <button class="nav-item" data-tab="diagnostics" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h3l3-9 3 13 3-8h4v2h-2.6L14 22l-3-12-2 8H4v-2Z"/></svg>
+        <span>诊断</span>
+      </button>
+    </nav>
+  </aside>
+
+  <main class="main">
+   <div class="main-inner">
+    <header class="topbar">
+      <div>
+        <h1 id="pageTitle">RVC 控制台</h1>
+        <p class="sub" id="pageDesc">RVC 翻唱插件管理</p>
+      </div>
+      <div class="top-actions">
+        <span class="status" id="stPlugin"><i></i>插件 <b>检测中</b></span>
+        <span class="status" id="stGateway"><i></i>Gateway <b>检测中</b></span>
+        <button class="btn primary" id="btnReloadData" type="button">刷新数据</button>
+      </div>
+    </header>
+
+   <div class="content" id="content">
+    <div class="banner" id="banner" hidden></div>
+
+    <!-- 概览 -->
+    <section class="panel active" id="tab-overview">
+      <div class="panel-body">
+      <div class="cards">
+        <article class="card"><h3>插件</h3><p class="kpi" id="ovPlugin">-</p><p class="hint" id="ovPluginHint">-</p></article>
+        <article class="card"><h3>Gateway</h3><p class="kpi" id="ovGateway">-</p><p class="hint" id="ovGatewayHint">-</p></article>
+        <article class="card"><h3>可用音色</h3><p class="kpi" id="ovModels">-</p><p class="hint" id="ovModelsHint">-</p></article>
+        <article class="card"><h3>默认音色</h3><p class="kpi" id="ovDefault">-</p><p class="hint" id="ovDefaultHint">-</p></article>
+      </div>
+      <div class="grid-2">
+        <article class="card">
+          <div class="card-head"><h3>最近任务</h3><button class="link" data-goto="tasks" type="button">全部任务 ›</button></div>
+          <div id="ovTasks" class="rows"></div>
+        </article>
+        <article class="card">
+          <div class="card-head"><h3>快捷入口</h3></div>
+          <div class="quick">
+            <button class="btn" data-goto="rvc" type="button">打开 RVC 控制台</button>
+            <button class="btn" data-goto="tts" type="button">TTS 试音</button>
+            <button class="btn" data-goto="models" type="button">管理音色</button>
+            <button class="btn" data-goto="settings" type="button">修改设置</button>
+            <button class="btn" data-goto="diagnostics" type="button">运行诊断</button>
+          </div>
+          <dl class="meta" id="ovMeta"></dl>
+        </article>
+      </div>
+      </div>
+    </section>
+
+    <!-- 任务 -->
+    <section class="panel" id="tab-tasks">
+      <div class="toolbar">
+        <div class="seg" id="taskBizSeg">
+          <button class="seg-item active" data-biz="rvc" type="button">RVC 任务</button>
+          <button class="seg-item" data-biz="tts" type="button">TTS 任务</button>
+        </div>
+        <div class="seg" id="taskModeSeg">
+          <button class="seg-item active" data-mode="current" type="button">当前任务</button>
+          <button class="seg-item" data-mode="history" type="button">历史任务</button>
+        </div>
+        <div class="toolbar-inline" id="taskHistoryBar" hidden>
+          <input class="input search" id="taskSearch" placeholder="搜索歌曲 / 歌手 / 模型 / 任务号" />
+          <div class="seg" id="taskSeg">
+            <button class="seg-item active" data-status="all" type="button">全部</button>
+            <button class="seg-item" data-status="succeeded" type="button">成功</button>
+            <button class="seg-item" data-status="failed" type="button">失败</button>
+            <button class="seg-item" data-status="running" type="button">进行中</button>
+          </div>
+          <button class="btn" id="btnTasksReload" type="button">刷新</button>
+          <span class="hint" id="tasksHint"></span>
+        </div>
+        <div class="pager-controls" id="taskPagerBar" hidden>
+          <select class="input pager-size" id="taskPageSize">
+            <option value="30">30 条 / 页</option>
+            <option value="50">50 条 / 页</option>
+            <option value="100">100 条 / 页</option>
+            <option value="200">200 条 / 页</option>
+          </select>
+          <button class="btn ghost sm" id="taskPrev" type="button">上一页</button>
+          <span class="pager-pages" id="taskPages"></span>
+          <button class="btn ghost sm" id="taskNext" type="button">下一页</button>
+          <span class="hint" id="taskRange"></span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div id="paneCurrent" class="current-pane"></div>
+        <div id="paneHistory" hidden>
+          <article class="card flush">
+            <table class="table" id="taskTable">
+              <thead><tr><th>时间</th><th>歌曲 / 歌手</th><th>用户</th><th>文件 / 输入</th><th>音色</th><th>时长</th><th>状态</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <p class="empty" id="taskEmpty">暂无任务记录</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- RVC 控制台 -->
+    <section class="panel" id="tab-rvc">
+      <div class="seg seg-lg" id="rvcSeg">
+        <button class="seg-item active" data-mode="convert" type="button">转换</button>
+        <button class="seg-item" data-mode="separate" type="button">人声 / 伴奏分离</button>
+        <button class="seg-item" data-mode="clip" type="button">切段</button>
+      </div>
+      <div class="panel-body">
+
+      <!-- 转换 -->
+      <div class="rvc" id="paneConvert">
+        <header class="rvc-bar">
+          <span class="rvc-brand">RVC 转换</span>
+          <span class="rvc-meta" id="rvcGw">Gateway -</span>
+          <span class="rvc-meta" id="rvcModelDir"></span>
+        </header>
+        <div class="rvc-cols">
+          <div class="rvc-col">
+            <section class="rvc-block">
+              <h4>模型</h4>
+              <div class="rvc-row"><label>音色</label><select id="rvcModel" class="rvc-input"></select></div>
+              <div class="rvc-row"><label>索引混合率</label><input id="rvcIndexRate" class="rvc-input" type="number" min="0" max="1" step="0.05" value="0.75" /></div>
+              <div class="rvc-row"><label>音高算法</label>
+                <select id="rvcF0" class="rvc-input">
+                  <option value="rmvpe">rmvpe</option><option value="fcpe">fcpe</option>
+                  <option value="harvest">harvest</option><option value="pm">pm</option>
+                </select>
+              </div>
+            </section>
+            <section class="rvc-block">
+              <h4>音频输入</h4>
+              <div class="rvc-row"><label>文件</label><input id="rvcFile" class="rvc-input" type="file" accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,.opus" /></div>
+              <div class="rvc-row"><label>状态</label><span class="rvc-note" id="rvcUploadNote">未上传</span></div>
+            </section>
+            <section class="rvc-block">
+              <h4>变调与时长</h4>
+              <div class="rvc-row"><label>变调（半音）</label><input id="rvcPitch" class="rvc-input" type="number" min="-24" max="24" step="1" value="0" /></div>
+              <div class="rvc-row"><label>输出时长（秒）</label><input id="rvcSeconds" class="rvc-input" type="number" min="10" max="200" step="1" value="25" /></div>
+              <div class="rvc-row"><label>首尾淡入淡出</label><input id="rvcFade" class="rvc-input" type="number" min="0" max="5" step="0.1" value="0.5" /></div>
+            </section>
+          </div>
+          <div class="rvc-col">
+            <section class="rvc-block">
+              <h4>转换参数</h4>
+              <div class="rvc-row"><label>RMS 混合率</label><input id="rvcRms" class="rvc-input" type="number" min="0" max="1" step="0.05" value="0.35" /></div>
+              <div class="rvc-row"><label>保护 protect</label><input id="rvcProtect" class="rvc-input" type="number" min="0" max="0.5" step="0.01" value="0.33" /></div>
+              <div class="rvc-row"><label>输出格式</label>
+                <select id="rvcFormat" class="rvc-input"><option value="wav">wav</option><option value="mp3">mp3</option><option value="flac">flac</option></select>
+              </div>
+              <div class="rvc-row"><label>人声音量（dB）</label><input id="rvcVocalDb" class="rvc-input" type="number" min="-12" max="12" step="0.5" value="0" /></div>
+            </section>
+            <section class="rvc-block">
+              <h4>人声混响（本次转换试听）</h4>
+              <div class="rvc-row"><label>启用 Reverb</label><input id="rvcReverbOn" type="checkbox" /></div>
+              <div class="rvc-row"><label>Wet</label><input id="rvcRevWet" class="rvc-input" type="number" min="0" max="0.5" step="0.01" value="0.18" /></div>
+              <div class="rvc-row"><label>Dry</label><input id="rvcRevDry" class="rvc-input" type="number" min="0.5" max="1" step="0.05" value="1.0" /></div>
+              <div class="rvc-row"><label>房间大小</label><input id="rvcRevRoom" class="rvc-input" type="number" min="0" max="1" step="0.05" value="0.65" /></div>
+              <div class="rvc-row"><label>尾音（秒）</label><input id="rvcRevDecay" class="rvc-input" type="number" min="0.2" max="4" step="0.1" value="1.4" /></div>
+              <div class="rvc-row"><label>高频衰减</label><input id="rvcRevDamp" class="rvc-input" type="number" min="0" max="1" step="0.05" value="0.45" /></div>
+              <div class="rvc-row"><label>预延迟（ms）</label><input id="rvcRevPre" class="rvc-input" type="number" min="0" max="100" step="1" value="18" /></div>
+              <div class="rvc-row"><label>立体声宽度</label><input id="rvcRevWidth" class="rvc-input" type="number" min="0" max="1" step="0.05" value="0.8" /></div>
+              <p class="rvc-note">只作用于本次转换的试听，不影响插件配置；想长期生效请到「音频效果」页保存。</p>
+            </section>
+            <details class="rvc-block rvc-advanced">
+              <summary><h4>高级参数</h4></summary>
+              <div class="rvc-row"><label>起点</label><input id="rvcStart" class="rvc-input" placeholder="如 01:12.5" /></div>
+              <div class="rvc-row"><label>终点</label><input id="rvcEnd" class="rvc-input" placeholder="如 01:40" /></div>
+              <div class="rvc-row"><label>固定时长</label><input id="rvcDuration" class="rvc-input" placeholder="如 25" /></div>
+              <div class="rvc-row"><label>speaker_id</label><input id="rvcSpeaker" class="rvc-input" type="number" min="0" value="0" /></div>
+              <p class="rvc-warn">以下参数当前 Gateway 不生效：伴奏音量、延迟、UVR5/MSST 后处理、伴奏移调。混响参数已移至「音频效果」页签。</p>
+            </details>
+          </div>
+        </div>
+        <footer class="rvc-actions">
+          <button class="btn primary" id="rvcRun" type="button">开始转换</button>
+          <button class="btn ghost" id="rvcReset" type="button">重置参数</button>
+          <span class="rvc-status" id="rvcStatus">就绪</span>
+        </footer>
+        <section class="rvc-result" id="rvcResult" hidden>
+          <h4>输出</h4>
+          <div id="rvcOutputs" class="outputs"></div>
+        </section>
+      </div>
+
+      <!-- 分离 -->
+      <div class="rvc" id="paneSeparate" hidden>
+        <header class="rvc-bar">
+          <span class="rvc-brand">人声 / 伴奏分离</span>
+          <span class="rvc-meta">底层 PyMSS 模型 · CPU 分离，不跑 RVC</span>
+        </header>
+        <div class="sep-cols">
+          <section class="rvc-block">
+            <h4>输入</h4>
+            <div class="rvc-row"><label>音频文件</label><input id="sepFile" class="rvc-input" type="file" accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,.opus" /></div>
+            <div class="rvc-row"><label>处理方式</label>
+              <select id="sepMode" class="rvc-input">
+                <option value="both">分离人声与伴奏</option>
+                <option value="vocals">去伴奏（仅人声）</option>
+                <option value="instrumental">去人声（仅伴奏）</option>
+              </select>
+            </div>
+            <div class="rvc-row"><label>底层模型</label><select id="sepModel" class="rvc-input"></select></div>
+            <div class="rvc-row"><label>导出格式</label>
+              <select id="sepFormat" class="rvc-input">
+                <option value="wav">wav</option><option value="flac">flac</option>
+                <option value="mp3">mp3</option><option value="m4a">m4a</option>
+              </select>
+            </div>
+            <div class="rvc-row"><label>状态</label><span class="rvc-note" id="sepUploadNote">未上传</span></div>
+          </section>
+          <section class="sep-action">
+            <button class="btn primary big" id="sepRun" type="button">开始分离</button>
+            <p class="rvc-note" id="sepStatus">就绪</p>
+          </section>
+          <section class="rvc-block">
+            <h4>输出信息</h4>
+            <p class="rvc-note" id="sepInfo">分离完成后在此显示结果，可直接播放或下载。</p>
+            <div id="sepOutputs" class="outputs"></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- 切段 -->
+      <div class="rvc" id="paneClip" hidden>
+        <header class="rvc-bar">
+          <span class="rvc-brand">切段</span>
+          <span class="rvc-meta">用与翻唱相同的启发式挑一段，不做分离/变声</span>
+        </header>
+        <div class="sep-cols">
+          <section class="rvc-block">
+            <h4>输入与输出</h4>
+            <div class="rvc-row"><label>音频文件</label><input id="clipFile" class="rvc-input" type="file" accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,.opus" /></div>
+            <div class="rvc-row"><label>目标时长（秒）</label><input id="clipSeconds" class="rvc-input" type="number" min="10" max="200" step="1" value="25" /></div>
+            <div class="rvc-row"><label>导出格式</label>
+              <select id="clipFormat" class="rvc-input">
+                <option value="wav">wav</option><option value="flac">flac</option>
+                <option value="mp3">mp3</option><option value="m4a">m4a</option>
+              </select>
+            </div>
+            <div class="rvc-row"><label>状态</label><span class="rvc-note" id="clipUploadNote">未上传</span></div>
+          </section>
+          <section class="sep-action">
+            <button class="btn primary big" id="clipRun" type="button">开始切段</button>
+            <p class="rvc-note" id="clipStatus">就绪</p>
+          </section>
+          <section class="rvc-block">
+            <h4>输出信息</h4>
+            <p class="rvc-note" id="clipInfo">切段完成后在此显示结果，可直接播放或下载。</p>
+            <div id="clipOutputs" class="outputs"></div>
+          </section>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <!-- TTS 控制台 -->
+    <section class="panel" id="tab-tts">
+      <div class="panel-body">
+      <div class="rvc">
+        <header class="rvc-bar">
+          <span class="rvc-brand">TTS 试音台</span>
+          <span class="rvc-meta" id="ttsProviderInfo">Provider -</span>
+          <span class="rvc-meta" id="ttsModelInfo"></span>
+        </header>
+        <div class="rvc-cols">
+          <div class="rvc-col">
+            <section class="rvc-block">
+              <h4>服务商与音色</h4>
+              <div class="rvc-row"><label>TTS 服务商</label><select id="ttsProvider" class="rvc-input"></select></div>
+              <div class="rvc-row"><label>音色模型</label><select id="ttsModel" class="rvc-input"></select></div>
+              <div class="rvc-row"><label>音调（半音）</label><input id="ttsPitch" class="rvc-input" type="number" min="-24" max="24" step="1" value="0" /></div>
+              <div class="rvc-row"><label>输出格式</label>
+                <select id="ttsFormat" class="rvc-input">
+                  <option value="wav">wav</option><option value="mp3">mp3</option>
+                </select>
+              </div>
+              <div class="rvc-row"><label>Reverb</label>
+                <select id="ttsReverb" class="rvc-input">
+                  <option value="default">按插件配置</option>
+                  <option value="true">本次开启</option>
+                  <option value="false">本次关闭</option>
+                </select>
+              </div>
+            </section>
+            <p class="hint">这里只做试听，不修改插件配置；群聊触发规则在「插件设置 → TTS 语音回复」里调。</p>
+          </div>
+          <div class="rvc-col">
+            <section class="rvc-block">
+              <h4>文本</h4>
+              <textarea id="ttsText" class="input tts-text" rows="5" maxlength="500"
+                placeholder="你好，今天也请多多关照。"></textarea>
+            </section>
+            <footer class="rvc-actions">
+              <button class="btn primary" id="ttsRun" type="button">生成语音</button>
+              <span class="rvc-status" id="ttsStatus">就绪</span>
+            </footer>
+            <section class="rvc-result" id="ttsResult" hidden>
+              <h4>试听（原始 TTS → RVC 转换后）</h4>
+              <div id="ttsOutputs" class="outputs"></div>
+            </section>
+          </div>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <!-- 模型管理 -->
+    <section class="panel" id="tab-models">
+      <div class="toolbar">
+        <button class="btn primary" id="btnSaveModels" type="button">保存设置</button>
+        <button class="btn" id="btnRefreshModels" type="button">刷新模型</button>
+        <span class="hint" id="modelsHint"></span>
+      </div>
+      <div class="panel-body">
+        <p class="hint">每行:模型 / 别名 / 性别 / <b>翻唱</b>(○=翻唱用它) / <b>TTS</b>(○=TTS 用它)——两列各自只能启用一个,点另一个自动切换；改完点顶部「保存设置」。</p>
+        <div id="modelRows" class="model-rows"></div>
+        <p class="empty" id="modelEmpty">暂无模型</p>
+        <p class="hint" id="modelsDir"></p>
+      </div>
+    </section>
+
+    <!-- 音频效果 -->
+    <section class="panel" id="tab-audio">
+      <div class="toolbar">
+        <button class="btn primary" id="btnSaveAudio" type="button">保存音频效果设置</button>
+        <button class="btn ghost" id="btnReloadAudio" type="button">重新读取</button>
+        <span class="hint" id="audioHint"></span>
+      </div>
+      <div class="panel-body">
+        <div id="audioCards"></div>
+      </div>
+    </section>
+
+    <!-- 插件设置 -->
+    <section class="panel" id="tab-settings">
+      <div class="toolbar">
+        <div class="seg" id="cfgGroupSeg"></div>
+        <button class="btn primary" id="btnSaveCfg" type="button">保存设置</button>
+        <button class="btn ghost" id="btnReloadCfg" type="button">重新读取</button>
+        <span class="hint" id="cfgHint"></span>
+      </div>
+      <div class="panel-body">
+        <div id="cfgGroups"></div>
+      </div>
+    </section>
+
+    <!-- 诊断 -->
+    <section class="panel" id="tab-diagnostics">
+      <div class="toolbar">
+        <button class="btn" id="btnDiag" type="button">运行诊断</button>
+        <span class="hint" id="diagHint"></span>
+      </div>
+      <div class="panel-body">
+        <div class="grid-2">
+          <article class="card"><div class="card-head"><h3>检查项</h3></div><ul class="checks" id="diagChecks"></ul></article>
+          <article class="card"><div class="card-head"><h3>环境</h3></div><dl class="meta" id="diagPaths"></dl></article>
+        </div>
+        <article class="card">
+          <div class="card-head"><h3>最近错误（AstrBot 日志，最多 40 条）</h3></div>
+          <ul class="logs" id="diagErrors"></ul>
+        </article>
+      </div>
+    </section>
+   </div>
+   </div>
+  </main>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-body">
+    <header class="card-head"><h3 id="modalTitle">详情</h3>
+      <button class="btn ghost sm" id="modalClose" type="button">关闭</button></header>
+    <div id="modalContent"></div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="/api/plugin/page/bridge-sdk.js"></script>
+<script src="assets/app.js?v=1.0.0-r10"></script>
+</body>
+</html>
