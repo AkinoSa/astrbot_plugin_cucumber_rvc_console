@@ -49,4 +49,4 @@
 | test_reverb_kernel.py | 混响 IR 形状/确定性/参数语义/峰值保护 | tests/ |
 | test_custom_autopick.py | 自动选歌评分 65 项(CUSTOM-3 期) | tests/ |
 | 网关并发集成 | 双 TTS 并发提交→串行+FIFO+queue_wait | 网关部署环境 |
-| 真实群测试 | 翻唱/伴奏拒绝/取消/同会话排队/TTS | 群 1126617572(已脱敏) |
+| 真实群测试 | 翻唱/伴奏拒绝/取消/同会话排队/TTS | 测试群(已脱敏) |
