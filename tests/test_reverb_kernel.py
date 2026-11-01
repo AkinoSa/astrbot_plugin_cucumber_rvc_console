@@ -16,7 +16,13 @@ import sys
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-GATEWAY_SRC = os.path.join(HERE, "..", "..", "gateway_dev", "gateway.py")
+# 网关源码路径:发布仓库中位于 ../cucumber-rvc-gateway/,开发环境中可能为 gateway_dev/
+_CANDIDATES = [
+    os.path.join(HERE, "..", "..", "cucumber-rvc-gateway", "gateway.py"),
+    os.path.join(HERE, "..", "..", "gateway_dev", "gateway.py"),
+    os.path.join(HERE, "..", "..", "gateway", "gateway.py"),
+]
+GATEWAY_SRC = next((p for p in _CANDIDATES if os.path.isfile(p)), _CANDIDATES[0])
 
 WANT_FUNCS = {"_reverb_lowpass_noise", "build_reverb_ir", "_as_float"}
 WANT_ASSIGNS = {"REVERB_SR"}
