@@ -58,18 +58,23 @@
 
 ```mermaid
 flowchart LR
-    User["用户 (群聊 / 私聊)"] -->|发指令 / 点歌 / 听你说| AstrBot["AstrBot 核心框架"]
-    AstrBot --> Plugin["astrbot_plugin_cucumber_rvc_console<br/>(调度 / 选歌 / WebUI / 交互)"]
+    User["用户 (群聊 / 私聊)"] -->|"发送指令 / 点歌 / 语音"| AstrBot["AstrBot 核心框架"]
+    AstrBot --> Plugin["astrbot_plugin_cucumber_rvc_console<br/>(任务调度 / 选歌 / WebUI)"]
     
     subgraph Gateway ["cucumber-rvc-gateway (独立 Docker 容器)"]
-        Router["FastAPI / Gradio API"] --> Worker["常驻 RVC Worker<br/>(音色模型保活)"]
-        Router --> Sep["PyMSS 3HP 人声分离"]
-        Router --> Reverb["卷积混响引擎"]
+        Router["FastAPI / Gradio API"]
+        Worker["常驻 RVC Worker<br/>(音色模型保活)"]
+        Sep["PyMSS 3HP 人声分离"]
+        Reverb["卷积混响引擎"]
+        
+        Router --> Worker
+        Router --> Sep
+        Router --> Reverb
     end
     
-    Plugin -->|HTTP / SSE 任务派发| Router
-    Gateway -->|变声合成音频 (WAV/MP3)| Plugin
-    Plugin -->|发送语音 / 结构化结果| AstrBot
+    Plugin -->|"HTTP / SSE 任务派发"| Router
+    Router -->|"返回变声合成音频"| Plugin
+    Plugin -->|"发送语音 / 结构化结果"| AstrBot
     AstrBot --> User
 ```
 
