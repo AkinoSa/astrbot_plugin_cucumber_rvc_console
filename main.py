@@ -510,10 +510,10 @@ def _migrate_config_layout(raw) -> bool:
 
 @register(
     "astrbot_plugin_cucumber_rvc_console",
-    "void-HaoNan",
+    "AkinoSa",
     "RVC 控制台：翻唱（取歌/分离/变声/混响）与 TTS 语音回复统一调度；对话出口统一走模型、失败结果结构化",
     "1.0.0",
-    "https://github.com/void-HaoNan/astrbot-plugin-chorus-cover",
+    "https://github.com/AkinoSa/astrbot_plugin_cucumber_rvc_console",
 )
 class MusicPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):

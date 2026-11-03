@@ -180,7 +180,7 @@
       "rvc_base_url": {
         "description": "RVC API Gradio 后端服务地址",
         "type": "string",
-        "hint": "你的 Gradio API RVC 后端运行的地址，必须以 / 结尾。\n\n这个后端就是配套的中间层 chorus-mw（不是 RVC 整合包自带的 7897 WebUI）：https://github.com/void-HaoNan/chorus-mw 。\n中间层负责切副歌、分离、移调、变声、混音；插件只用 gradio_client 2.x（sse），直连 RVC 的 Gradio 3.14（ws）会报 Unknown protocol: ws，所以必须有这一层。\n本机默认 http://127.0.0.1:3333/ ；没起中间层时翻唱会失败，点歌不受影响。",
+        "hint": "你的 Gradio API RVC 后端运行的地址，必须以 / 结尾。\n\n这个后端就是配套的推理网关 cucumber-rvc-gateway：https://github.com/AkinoSa/cucumber-rvc-gateway 。\n中间层负责切副歌、分离、移调、变声、混音；插件只用 gradio_client 2.x（sse），直连 RVC 的 Gradio 3.14（ws）会报 Unknown protocol: ws，所以必须有这一层。\n本机默认 http://127.0.0.1:3333/ ；未启动网关时翻唱会失败，点歌不受影响。",
         "default": "http://127.0.0.1:3333/"
       },
       "models": {

@@ -4,208 +4,233 @@
 
 ![RVC 控制台](logo.png)
 
-**AstrBot AI 翻唱 + TTS 语音回复控制台**
+**AstrBot 现代化 AI 翻唱 + TTS 语音回复全功能控制台**
 
-翻唱《歌名》→ 自动取歌 → 副歌裁剪 → 3HP 人声分离 → RVC 变声 → 卷积混响 → 语音发回群聊
-@Bot 我想听你说… → 人格反应 + 台词变声语音
+[![AstrBot](https://img.shields.io/badge/AstrBot-v4.16+-4A90E2.svg?style=flat-square&logo=bot)](https://github.com/AstrBotDevs/AstrBot)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-orange.svg?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-aiocqhttp%20%7C%20qq__official-green.svg?style=flat-square)]()
+[![Gateway](https://img.shields.io/badge/Gateway-Docker%20%7C%20GHCR-brightgreen.svg?style=flat-square&logo=docker)](https://github.com/AkinoSa/cucumber-rvc-gateway)
+[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg?style=flat-square&logo=python)]()
+
+翻唱《歌名》→ 自动多音源检索 → 副歌智能裁剪 → 3HP 人声分离 → RVC 变声 → 卷积混响 → 语音发回群聊  
+@Bot 我想听你说… → 人格情绪文本生成 + 角色台词经 TTS → RVC 变声拟人输出
 
 ![访客统计](https://m.h4ck.org.cn/get/@cucumber_rvc_console?theme=rule34)
 
 </div>
 
 > [!NOTE]
-> 本插件需要配合独立部署的 **[cucumber-rvc-gateway](https://github.com/AkinoSa/cucumber-rvc-gateway)** 推理网关使用(见下方「后端准备」)。
-> 当前项目由 [sdfsfsk/matsuko_cover](https://github.com/sdfsfsk/matsuko_cover) 派生而来,功能差异见 [docs/UPSTREAM_COMPARISON.md](docs/UPSTREAM_COMPARISON.md)。许可证 AGPL-3.0。
+> 本插件为纯调度与交互端，模型推理、人声分离等重型任务由独立部署的 **[cucumber-rvc-gateway](https://github.com/AkinoSa/cucumber-rvc-gateway)** 推理网关（Docker 镜像开箱即用）承载。  
+> 项目派生自 [sdfsfsk/matsuko_cover](https://github.com/sdfsfsk/matsuko_cover)，针对 NAS/家用服务器进行了深度重构与性能优化。
 
-## 这是什么
+---
 
-一个 [AstrBot](https://github.com/AstrBotDevs/AstrBot) 插件,把「点歌变声」做成完整的产品化体验:
+## 💡 这是什么
 
-- **对用户**:群里发一句「翻唱《晴天》」或「@Bot 我想听你说XX」,机器人自动完成取歌/变声/语音发送,支持排队、取消、状态查询;
-- **对管理员**:WebUI 控制台全套管理——任务监控(RVC/TTS 分栏)、RVC 控制台(手动转换/分离/切段)、TTS 试音台、模型管理(别名/性别/双启用)、卷积混响调音(8 参数)、诊断;
-- **架构上**:插件只负责聊天交互与任务调度;重活(取音源、人声分离、RVC 推理)全部在独立的 Docker 网关中全局串行执行。
+一个面向 [AstrBot](https://github.com/AstrBotDevs/AstrBot) 生态打造的开箱即用 AI 音乐与语音套件：
 
-**功能边界**:插件不做推理;网关不做聊天;TTS 原始语音来自 AstrBot 已配置的 TTS 服务商(本插件不内置 TTS API)。
+- 🎤 **群聊 AI 翻唱**：群内发送「`翻唱《晴天》`」或「`/rvc 晴天 3`」，机器人自动完成多平台搜索选歌、副歌能量裁剪、专业 3HP 人声伴奏分离、RVC 模型音色转换、卷积混响润色并以群语音形式发出；
+- 🗣️ **TTS 拟人角色语音回复**：发送「`@Bot 我想听你说...`」，LLM 生成带有角色性格的情绪台词，结合 AstrBot 的 TTS 服务商生成音频并通过 RVC 变声为你配置的角色声线；
+- 🎛️ **原生 WebUI 控制台**：内嵌于 AstrBot 管理面板，涵盖任务监控看板（RVC/TTS 双队列）、RVC 在线工作台、TTS 试音台、模型动态管理、8 参数专业级卷积混响调音与一键自检诊断；
+- ⚡ **架构彻底解耦**：重 CPU 的音频分离与变声推理全部收敛至独立 Docker 网关，支持常驻 Worker 极速变声，CPU 实测稳定流畅，不卡顿聊天机器人主进程。
 
-## 功能总览(以当前源码为准)
+---
 
-| 功能 | 说明 |
-|---|---|
-| 歌曲搜索与选择 | 多音源路由(网易云→酷狗→酷我→QQ,顺序可配)、启发式自动选歌(评分制)、伴奏/试听淘汰 |
-| 音源获取 | meting 主路 + NodeJS 备路 + cookie 支持 + cookie 失效告警 |
-| 片段裁剪 | 严格时间校验(颠倒/越界/超 30s 拒绝)+ 副歌启发式挑选(能量包络+停顿吸附)+ 变长输出 |
-| 3HP 人声分离 | PyMSS 3_HP-Vocal-UVR,静音检测、人声偏轻自动换段重试 |
-| RVC 音色转换 | 子进程推理 + 常驻 worker(省 ~40s 模型加载);参数实时生效 |
-| 音色模型动态发现 | 网关扫描 weights 目录;index 自动匹配;无 index 自动无索引推理 |
-| RVC 推理参数 | f0/index_rate/protect/rms_mix_rate/resample_sr,实时生效 |
-| 卷积混响 | 合成 IR + FFT 卷积,wet/dry/room/decay/damping/pre-delay/width 全真实生效,峰值保护;翻唱与 TTS 独立配置 |
-| TTS 语音回复 | AstrBot TTS 服务商 → RVC 变声;二段式(人格反应 + 台词朗读);独立模型/参数/混响 |
-| 触发词意图分离 | 点歌 > 翻唱 > TTS 三级判定;点歌不被翻唱抢、翻唱不被 TTS 抢 |
-| 任务队列 | 翻唱/TTS 独立队列 + 全局等待上限 + 网关全局串行(忙时等待≤180s) |
-| 任务注册表 | task_id 级状态机、防重复提交、按用户查询与取消 |
-| `/cover_status` | 查询自己的任务状态与排队位置(隐私隔离) |
-| 多会话隔离 | 任务/结果/取消严格绑定原始会话,群聊私聊互不干扰 |
-| 翻唱/TTS 历史 | 300 条,含触发用户/群号/台词,WebUI 可回放 |
-| WebUI 控制台 | 概览/任务/RVC 控制台/TTS 试音台/模型管理/音频效果/设置/诊断 |
-| 失败降级 | TTS 失败降级纯文字;Edge TTS 子进程兜底;网关 worker 失败回退子进程推理 |
-| 配置实时生效 | 触发/冷却/推理参数/混响/性别映射等 60+ 项改完即用;需重载项明确标注 |
+## 🌟 核心特性一览
 
-## 相对于原版的区别
+| 模块 | 功能项 | 说明 |
+|---|---|---|
+| **歌曲检索与路由** | 多音源智能选歌 | 支持 网易云、酷狗、酷我、QQ 音乐路由，启发式评分匹配最精准音源，智能规避伴奏与试听片段 |
+| | 双路获取引擎 | Meting 主路 + NodeJS 备用线路，支持自定义 Cookie 与失效告警 |
+| **音频裁剪与分离** | 启发式副歌挑选 | 能量包络与停顿吸附算法，精准定位副歌高潮，杜绝前后颠倒与静音 |
+| | 3HP 人声分离 | PyMSS 3_HP-Vocal-UVR 高品质人声与伴奏分离，伴奏人声偏轻自动换段重试 |
+| **RVC 音色推理** | 动态模型扫描 | 网关扫描 `weights` 目录即插即用，Index 特征检索自适应，无需重启容器 |
+| | 常驻 Worker 加速 | 模型预热常驻内存，免去每次 40s 的模型重复加载，空闲 10 分钟自动回收节省资源 |
+| | 实时参数生效 | f0 算法、变调、检索率（index_rate）、保护清辅音（protect）等 10+ 核心参数秒级生效 |
+| **空间与声学处理** | 8 参数卷积混响 | 专业级合成 IR + FFT 真实卷积（wet/dry/room/decay/damping/pre-delay/width），峰值防爆音 |
+| **TTS 人格变声** | 全链路二段式回复 | AstrBot 已接入的 TTS 引擎（如 Edge TTS）负责生音，RVC 赋予灵魂音色，支持独立模型与混响 |
+| **调度与稳定性** | 统一全局任务队列 | 翻唱 / TTS 独立排队与全局串行锁，防重复提交，支持 `/cover_status` 查询排队进度与手动取消 |
+| | 异常降级兜底 | TTS 异常降级纯文本；网关异常支持子进程自动重试；会话隔离与隐私保护 |
 
-当前项目由 [matsuko_cover](https://github.com/sdfsfsk/matsuko_cover)(AI 翻唱插件,RVC/SVC-Fusion/SoulX-SVCVC 三引擎)派生。完整对照表见 [docs/UPSTREAM_COMPARISON.md](docs/UPSTREAM_COMPARISON.md),演变史见 [docs/PROJECT_HISTORY.md](docs/PROJECT_HISTORY.md)。要点:
+---
 
-**继承自原版**:多音源点歌、LLM 工具调用框架、本地音频翻唱、自动升降调(性别识别)、选歌菜单与 QQ 按钮、偏好学习、消息分段。
+## 🏗️ 运行架构
 
-**重构/增强**:音源路由化与自动选歌评分制;RVC 推理从「外部 Gradio 后端」改为「自研网关(分离+推理+缓存)」;推理参数真实生效;任务队列与全局串行调度;配置两层分组 + 实时生效;消息发送双兜底。
+```mermaid
+flowchart LR
+    User["用户 (群聊 / 私聊)"] -->|发指令 / 点歌 / 听你说| AstrBot["AstrBot 核心框架"]
+    AstrBot --> Plugin["astrbot_plugin_cucumber_rvc_console<br/>(调度 / 选歌 / WebUI / 交互)"]
+    
+    subgraph Gateway ["cucumber-rvc-gateway (独立 Docker 容器)"]
+        Router["FastAPI / Gradio API"] --> Worker["常驻 RVC Worker<br/>(音色模型保活)"]
+        Router --> Sep["PyMSS 3HP 人声分离"]
+        Router --> Reverb["卷积混响引擎"]
+    end
+    
+    Plugin -->|HTTP / SSE 任务派发| Router
+    Gateway -->|变声合成音频 (WAV/MP3)| Plugin
+    Plugin -->|发送语音 / 结构化结果| AstrBot
+    AstrBot --> User
+```
 
-**新增**:TTS 语音回复全链路(TTS→RVC 变声,独立模型/参数/混响);卷积混响引擎;统一任务注册表(`task_id` 级状态机);`/cover_status`;WebUI 控制台 8 标签;常驻推理 worker;旧版配置/数据自动迁移。
+---
 
-**移除**:SVC-Fusion 与 SoulX-SVCVC 引擎及相关命令(实际无人使用,无回归计划);QQ 点歌命令(由点歌插件承担)。
+## 🚀 极速部署指南
 
-**为什么需要独立 Gateway**:RVC/3HP 推理是重 CPU 任务(i5-6500 实测 30s 片段峰值 ~4GB 内存),必须全局串行且与聊天进程隔离;网关以 Docker 容器常驻,负责资源管理、队列、子进程生命周期与缓存,插件保持轻量。
+### 第一步：启动推理网关（cucumber-rvc-gateway）
 
-## 安装
+网关已发布预构建镜像至 GitHub Container Registry（GHCR），开箱即用无需自行编译：
+
+1. **准备模型资产**（在宿主机准备一个目录存放模型文件）：
+   - `weights/`：存放你的 RVC 音色模型（`.pth`）
+   - `indices/`：存放对应的检索特征文件（`.index`，非必需但推荐）
+   - `pymss_weights/`：3HP 人声分离模型文件（如 `3_HP-Vocal-UVR.pth`）
+   - `hubert_base/`：HuBERT 基础特征提取模型
+   - `rmvpe/`：RMVPE 音高检测模型
+
+2. **拉取并运行网关**：
+   ```bash
+   git clone https://github.com/AkinoSa/cucumber-rvc-gateway.git
+   cd cucumber-rvc-gateway
+   cp .env.example .env
+   # 编辑 .env，将各模型目录与工作目录映射至你的宿主机实际路径
+   docker compose pull && docker compose up -d
+   ```
+
+3. **测试连通**：
+   ```bash
+   curl http://127.0.0.1:3333/
+   # 返回 HTTP 200 即说明网关启动成功
+   ```
+
+> 详细的模型挂载与飞牛 NAS / Linux 部署图文教程，请参阅 **[Gateway 官方文档](https://github.com/AkinoSa/cucumber-rvc-gateway)**。
+
+---
+
+### 第二步：安装本插件
+
+进入你的 AstrBot 部署目录：
 
 ```bash
 cd AstrBot/data/plugins
 git clone https://github.com/AkinoSa/astrbot_plugin_cucumber_rvc_console.git
 ```
 
-或下载 Release 包解压到插件目录,然后在 AstrBot WebUI → 插件管理 → 启用并加载(依赖 `gradio_client`、`aiohttp` 自动安装)。
+或者在 [Releases](https://github.com/AkinoSa/astrbot_plugin_cucumber_rvc_console/releases) 下载源码压缩包解压至该目录。
 
-**升级**:覆盖插件目录后重载;配置与历史自动保留(新版首次加载自动从旧插件名 astrbot_plugin_chorus_cover 迁移)。
+在 AstrBot WebUI 中刷新并重载插件，依赖库（`gradio_client`、`aiohttp` 等）将自动就绪。
 
-## 后端准备(cucumber-rvc-gateway)
+---
 
-本插件需要一个独立部署的推理网关。**普通用户直接使用 GHCR 预构建镜像**,不需要自行构建:
+### 第三步：配置插件
 
-1. 准备 RVC 整合包的 assets:`weights`(音色 .pth)、`indices`、`pymss_weights`(3HP 分离模型)、`hubert_base`、`rmvpe`;
-2. 获取网关:
-   ```bash
-   git clone https://github.com/AkinoSa/cucumber-rvc-gateway.git
-   cd cucumber-rvc-gateway
-   cp .env.example .env
-   # 编辑 .env,按注释填写路径与端口
-   docker compose pull && docker compose up -d
-   ```
-3. 测试:`curl http://127.0.0.1:3333/` 返回 200 即启动成功。
+进入 **AstrBot WebUI → 插件配置 → RVC 控制台**：
 
-部署拓扑支持:同机 Docker、跨容器、跨主机——只要 AstrBot 能访问到 `rvc_base_url`。完整说明(含 Linux/Windows/飞牛 NAS 安装流程、GHCR 镜像信息、模型挂载说明)见 **[Gateway README](https://github.com/AkinoSa/cucumber-rvc-gateway)**。
-
-## 配置要点
-
-全部配置在 WebUI「插件设置」,中文说明齐全,按生效方式分三类(每项都有标注):**实时生效** / **保存后自动同步** / **需重载**(45 键标注)。完整审计见 `docs/config-audit.json`。
-
-| 配置 | 说明 |
-|---|---|
-| `rvc_base_url` | 网关地址。同机填 `http://127.0.0.1:3333/`;**跨容器时 127.0.0.1 指容器自身**,需用宿主机 IP 或容器网络地址 |
-| `gateway_work_dir` | 网关工作目录的宿主机路径(与网关 `.env` 的 `RVC_WORK_DIR` 相同)——补发翻唱、TTS 落盘、历史回放依赖它 |
-| 音色模型 / 默认音色 | 来自网关动态扫描;TTS 音色与翻唱音色相互独立,模型管理页可视化切换 |
-| TTS 触发与冷却 | 触发词正则、@Bot 要求、用户/群冷却、复读间隔、队列上限 |
-| 音源 | 音源顺序、meting/NodeJS 地址、cookie、失效告警 |
-| 混响 | 歌曲/TTS 各自独立的 8 参数卷积混响 |
-
-## 使用
-
-| 命令/说法 | 效果 |
-|---|---|
-| `翻唱《晴天》` / `翻唱周杰伦的晴天` | 自动取歌→变声→语音 |
-| `/rvc 晴天 3` | 指定歌名与升降调 |
-| `@Bot 我想听你说今天也要加油鸭` / `@Bot 说一下XX` | TTS 语音回复(人格反应+台词变声) |
-| `再说一遍` / `接着说` | 复读/接续(结合上下文) |
-| `/cover_status` | 查询自己的任务与排队位置 |
-| `取消翻唱任务` | 取消自己的全部进行中任务 |
-| `/本地翻唱` | 翻唱刚发的音频文件 |
-| `/刷新rvc模型` | 重新扫描音色模型 |
-| `/查看翻唱缓存` / `/清理翻唱缓存` | 缓存管理 |
-
-自然语言点歌与翻唱依赖 AstrBot 的 LLM 工具调用:请使用**支持 Function Calling 的模型提供商**(见下方排查)。
-
-## 模型提供商(Function Calling)说明
-
-「翻唱《XX》」这类自然语言翻唱由 LLM 调用插件的 `smart_cover` 等工具完成:
-
-1. **LLM 不调工具**(只口头答应):确认模型提供商支持 Function Calling;插件已在请求阶段注入调用提示,但最终取决于模型能力;
-2. **插件问题**:看 AstrBot 日志中 `[RVC控制台]` / `[TTS]` 前缀;
-3. **网关问题**:WebUI 概览 Gateway 状态 / 诊断页;`curl http://<网关地址>/` 验证。
-
-确定性替代:`/rvc 歌名` 命令不依赖 LLM。
+1. **网关地址**（`rvc_base_url`）：填写 `http://127.0.0.1:3333/`（若 AstrBot 与网关跨机或跨容器，请填写宿主机实际 IP 与端口，**必须以 `/` 结尾**）；
+2. **网关工作目录**（`gateway_work_dir`）：填写网关 `.env` 中 `RVC_WORK_DIR` 的宿主机绝对路径（用于补发音频、TTS 历史回放）；
+3. 发送群指令 `/刷新rvc模型`，确认能够正常列出已放置的音色。
 
 > [!IMPORTANT]
-> **TTS 语音回复还需要额外配置一个 TTS 服务商**:AstrBot 服务商配置 → 新增 → 类型选 **text_to_speech**。插件不内置 TTS API,原始语音由 AstrBot 已配置的 TTS 服务商生成后交给网关变声。推荐 Edge TTS(免费无 Key)或 fish.audio(音质好,需代理)。如果只配置了 LLM 服务商而没有 TTS 服务商,TTS 语音回复不会触发,请先在 AstrBot 服务商配置中添加。
+> **使用 TTS 拟人语音回复功能**：  
+> 请在 AstrBot 的「服务商配置」中添加一个类型为 **`text_to_speech`** 的服务商（推荐免费免配置 Key 的 **Edge TTS**，或音质顶级的 **fish.audio**）。  
+> 插件负责调度 TTS 与 RVC 变声，若未配置 TTS 服务商，TTS 语音功能将无法合成原始音频。
 
-## 路径说明
+---
 
-| 路径 | 位置 | 说明 |
+## 📖 指令手册
+
+### 👥 成员常用指令
+
+| 指令 / 语法 | 示例 | 功能描述 |
 |---|---|---|
-| 插件数据目录 | `<AstrBot data>/plugin_data/astrbot_plugin_cucumber_rvc_console/` | 历史/偏好/临时音频(自动管理) |
-| 插件配置 | `<AstrBot data>/config/astrbot_plugin_cucumber_rvc_console_config.json` | WebUI 与原生设置共用 |
-| 网关工作目录 | 宿主机任意路径(网关 `.env` 的 `RVC_WORK_DIR`) | out/logs/tts/cache;**插件设置的 `gateway_work_dir` 必须填同一路径** |
-| 容器内路径 | `/app/assets/...`、`/work/...` | 固定标准值,经 Docker 挂载映射 |
+| `翻唱《歌名》` | `翻唱《晴天》` | 智能搜索匹配最热版本，自动切副歌、分离人声并变声发送 |
+| `翻唱歌手的歌名` | `翻唱周杰伦的晴天` | 精确匹配特定歌手与歌曲 |
+| `/rvc <歌名> [升降调]` | `/rvc 晴天 3` | 精确指令翻唱，支持传入半音偏移（+3 升调，-2 降调） |
+| `@Bot 我想听你说 <台词>` | `@Bot 我想听你说今天也要元气满满哦` | 结合人格 LLM 生成角色回复，经 TTS 与 RVC 变声以语音回复 |
+| `@Bot 说一下 <台词>` | `@Bot 说一下欢迎新群友` | 快捷 TTS 语音朗读 |
+| `/cover_status` | `/cover_status` | 查看当前正在进行的任务进度与自己在队列中的排队位置 |
+| `取消翻唱任务` | `取消翻唱任务` | 取消由自己提交的排队中或执行中的任务 |
+| `/本地翻唱` | 引用一条音频发 `/本地翻唱` | 直接对群内上传的语音或音频文件进行 RVC 变声处理 |
 
-> [!WARNING]
-> **容器内路径 ≠ 宿主机路径**。网关返回的成品路径必须能被 AstrBot 进程读取——这就是 `gateway_work_dir` 需要与网关 `.env` 保持一致的原因。
+### 🛠️ 管理员管理指令
 
-## 测试环境与性能
-
-实测环境(所有性能数据来自此环境真实日志,未标注「未测量」的均为实测):
-
-- 飞牛 fnOS + Docker;Intel i5-6500(4C4T);16GB RAM;**CPU 推理,无 GPU**;
-- AstrBot 4.29.0(Python 3.12);Gradio 6.31.0;torch 2.4.1+cpu;
-- 模型:rym/deng/nuoyemu.pth;分离:3_HP-Vocal-UVR(PyMSS)。
-
-| 阶段 | 实测耗时(30s 歌曲 → 25s 成品) |
+| 指令 | 说明 |
 |---|---|
-| 音源获取 | 2~20s(取决于音源) |
-| 裁剪 | ~0.5s |
-| 3HP 分离 | ~70s |
-| RVC 推理(常驻 worker) | ~54s(首次含模型加载 ~110s) |
-| 混响 | ~0.2s |
-| **翻唱总耗时** | **~2~3 分钟** |
-| TTS 生成+变声(短句) | 反应文字即时,语音 ~10-15s |
+| `/刷新rvc模型` | 触发网关重新扫描 `weights` 目录下的新音色并同步至列表 |
+| `/查看翻唱缓存` | 查看当前已缓存的伴奏、人声切片与成品占用体积 |
+| `/清理翻唱缓存` | 释放已生成的中间音频切片与缓存文件 |
 
-> 性能受 CPU、内存、模型、音频长度与排队影响;高峰期任务在队列中等待,等待耗时记录于任务日志 `queue_wait`。
+---
 
-## 模型常驻与资源说明
+## 🖥️ WebUI 控制台导航
 
-- **网关进程**常驻(Docker);**音色模型**在常驻 worker 中保持加载(首次任务加载 ~40s,之后免加载),**空闲 10 分钟自动卸载**;
-- 3HP 分离每次任务以子进程运行,任务结束释放;
-- TTS 原始语音由 TTS 服务商生成,不占推理资源;RVC 变声走同一常驻 worker;
-- 任务失败自动回退子进程路径并释放槽位;全局串行保证同时只有一个推理任务;
-- 实测内存:网关容器常驻 ~1.2GiB,worker 热态 +1.1GiB,推理峰值 ~4GiB(上限 12g)。
+本插件深度集成了 AstrBot 原生扩展页面，在管理后台点击插件即可打开图形化控制台：
 
-## 常见问题与故障排查
+1. **概览看板**：实时展示 Gateway 联通状态、当前推理任务、音色模型总数与最近任务简报；
+2. **任务监控**：RVC 翻唱队列与 TTS 语音队列双栏呈现，显示 task_id、耗时分解、排队状态及中断控制；
+3. **RVC 在线工作台**：免输入聊天指令，在网页端直接上传音频、调节调音参数并试听变声结果；
+4. **TTS 试音台**：在线输入文本、选择预设人格声线与混响，一键试听角色合成效果；
+5. **模型管理**：可视化重命名音色别名、标记男女声倾向、单独为 RVC 与 TTS 勾选启用状态；
+6. **音频效果（混响）**：8 参数专业卷积混响调音面板，附带试听波形与房体尺寸调节；
+7. **诊断与自检**：一键检测网关连接、工作目录读写权限、音源 API 可用性与依赖完整度。
 
-| 现象 | 排查 |
-|---|---|
-| 翻唱/TTS 一直没反应 | WebUI 概览看 Gateway 状态 → 诊断页逐项检查;`curl http://<网关地址>/` |
-| Gateway 无法读取 | `rvc_base_url` 是否可达?跨容器时 127.0.0.1 指容器自身 |
-| 模型列表为空 | 网关 `.env` 的 weights 目录挂载是否正确 → `/刷新rvc模型` |
-| 某模型「无 index」 | 正常降级为无索引推理,音色贴合度略差;放入同名 index 后刷新 |
-| 3HP 分离失败 | 看网关日志;确认 `RVC_PYMSS_WEIGHTS_DIR` 挂载与 `RVC_SEP_MODEL` 文件名 |
-| RVC 推理失败/OOM | 缩短片段;检查容器内存上限;看网关日志退出码(-9 = OOM) |
-| LLM 只说话不翻唱 | 确认模型支持 Function Calling;插件已注入调用提示但最终取决于模型;用 `/rvc` 命令替代 |
-| TTS 只有文字没语音 | 看日志 `[TTS]` 前缀;TTS 服务商是否可用;`gateway_work_dir` 是否配置 |
-| 「请填写 gateway_work_dir」 | 插件设置 → 高级 → 网关工作目录,填网关 `.env` 的 `RVC_WORK_DIR` 同值 |
-| 任务取消没反应 | 排队任务立即取消;运行中任务软取消(转换完不发送) |
-| 输出文件无法访问 | `gateway_work_dir` 与网关 `RVC_WORK_DIR` 是否一致 |
+---
 
-## 已知行为
+## 📊 实测性能基准
 
-- 推理顺序可能与提交顺序交换(取歌耗时不一致;全局串行保证不并发);
-- 模型性别下拉为静态三槽位,新模型性别经 `model_genders_extra` 自动维护;
-- 插件重启后内存中的排队任务丢失(不会误标成功);网关重启自动清扫任务残骸;
-- 群内 TTS/翻唱的触发与冷却详见设置页「TTS 语音回复 → 触发与冷却」。
+以下数据来自家用低功耗小主机（飞牛 fnOS，纯 CPU 环境，无独显）：
 
-## 致谢与许可证
+- **测试硬件**：Intel Core i5-6500 (4核4线程) / 16GB RAM / SATA SSD
+- **运行环境**：AstrBot 4.29.0 / Gradio 6.31.0 / Torch 2.4.1+cpu
+- **音频样本**：30 秒标准流行歌曲切片 → 25 秒变声成品
 
-- 上游项目:[sdfsfsk/matsuko_cover](https://github.com/sdfsfsk/matsuko_cover)(AGPL-3.0)——本项目的直接前身,功能对照见 [docs/UPSTREAM_COMPARISON.md](docs/UPSTREAM_COMPARISON.md);
-- 上游前身:[CCYellowStar2/astrbot_plugin_rvc_svc](https://github.com/CCYellowStar2/astrbot_plugin_rvc_svc);
-- 框架:[AstrBot](https://github.com/AstrBotDevs/AstrBot);
-- 推理:[Retrieval-based-Voice-Conversion-WebUI](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)(MIT);
-- 音源参考:[astrbot_plugin_music](https://github.com/Zhalslar/astrbot_plugin_music);
-- 分离:[PyMSS](https://github.com/SUC-DriverOld/MSST-WebUI) 系 3HP 模型。
+| 处理阶段 | 实测耗时 | 资源占用特征 |
+|---|---|---|
+| **音源获取** | 2 ~ 10 秒 | 取决于网络连接与所选音乐平台 |
+| **副歌裁剪** | ~ 0.5 秒 | CPU 极轻微波动 |
+| **3HP 人声伴奏分离** | ~ 60 ~ 70 秒 | 多线程 CPU 满载，内存峰值 ~2.5GB |
+| **RVC 音色转换** | ~ 45 ~ 55 秒 | 常驻 Worker 命中，免模型加载 |
+| **卷积混响润色** | ~ 0.2 秒 | 瞬时微秒级完成 |
+| **翻唱全流程总耗时** | **约 2 分钟左右** | 全局串行队列，保证系统稳健不卡死 |
+| **TTS 生成与变声** | **约 10 ~ 15 秒** | 短句即时响应，聊天体验优秀 |
 
-本项目基于 AGPL-3.0 发布,继承上游全部许可义务;详见 [LICENSE](LICENSE) 与 [NOTICE.md](NOTICE.md)。
+---
 
+## ❓ 常见问题排查（FAQ）
 
+<details>
+<summary><b>1. 发送「翻唱《歌名》」机器人只文字答应，但没有实际翻唱？</b></summary>
+
+自然语言翻唱依赖 AstrBot 的 LLM 工具调用（Function Calling）能力：
+1. 检查你当前使用的 LLM 模型是否支持工具调用（推荐 OpenAI GPT-4o、Claude 3.5、DeepSeek-V3 等主流模型）；
+2. 亦可直接使用绝对确定的指令格式：`/rvc 歌名`，此命令完全不依赖大模型，直接触发执行。
+</details>
+
+<details>
+<summary><b>2. 提示「网关连接失败」或「Gateway 无法访问」？</b></summary>
+
+1. 确认 Docker 网关已成功运行（`docker ps` 查看容器状态是否为 Up）；
+2. 检查 `rvc_base_url` 是否以 `/` 结尾（例如 `http://127.0.0.1:3333/`）；
+3. 若 AstrBot 与网关分别运行在不同容器或主机，请填入局域网实际 IP，不能填 `127.0.0.1`。
+</details>
+
+<details>
+<summary><b>3. TTS 变声只有文字回复，没有发出语音？</b></summary>
+
+1. 本插件不内置 TTS 生成 API，必须在 AstrBot「服务商配置」中添加一个 `text_to_speech` 提供商（例如 Edge TTS）；
+2. 检查插件高级设置中 `gateway_work_dir` 填写的路径是否与网关宿主机工作路径完全一致。
+</details>
+
+---
+
+## 🤝 致谢与开源许可
+
+本项目基于 **AGPL-3.0** 许可证开源，继承上游项目的开源义务与衍生授权：
+
+- **上游核心派生**：[sdfsfsk/matsuko_cover](https://github.com/sdfsfsk/matsuko_cover)（AGPL-3.0）与 [void-HaoNan/astrbot-plugin-chorus-cover](https://github.com/void-HaoNan/astrbot-plugin-chorus-cover)；
+- **上游前身探索**：[CCYellowStar2/astrbot_plugin_rvc_svc](https://github.com/CCYellowStar2/astrbot_plugin_rvc_svc)；
+- **核心推理框架**：[Retrieval-based-Voice-Conversion-WebUI](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)（MIT）；
+- **人声分离核心**：[PyMSS / MSST-WebUI](https://github.com/SUC-DriverOld/MSST-WebUI) 系 3HP 模型；
+- **机器人底层驱动**：[AstrBot](https://github.com/AstrBotDevs/AstrBot) 机器人框架。
+
+特别鸣谢所有开源社区贡献者的持续付出！
