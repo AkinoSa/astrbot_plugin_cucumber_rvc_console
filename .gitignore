@@ -2,5 +2,6 @@ __pycache__/
 *.pyc
 *.bak-*
 temp_audio/
+# 本地修改日志(含测试群号,不入公开仓库;发布后新日志可另行添加)
 CHANGELOG_CUSTOM.md
 CUSTOMIZATION.md

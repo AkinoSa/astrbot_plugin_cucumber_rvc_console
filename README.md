@@ -9,7 +9,7 @@
 翻唱《歌名》→ 自动取歌 → 副歌裁剪 → 3HP 人声分离 → RVC 变声 → 卷积混响 → 语音发回群聊
 @Bot 我想听你说… → 人格反应 + 台词变声语音
 
-![访客统计](https://count.getloli.com/get/@astrbot_plugin_cucumber_rvc_console?theme=rule34)
+![访客统计](https://m.h4ck.org.cn/get/@cucumber_rvc_console?theme=rule34)
 
 </div>
 
@@ -77,13 +77,20 @@ git clone https://github.com/AkinoSa/astrbot_plugin_cucumber_rvc_console.git
 
 ## 后端准备(cucumber-rvc-gateway)
 
-1. 准备 RVC 整合包的 assets:`weights`(音色 .pth)、`indices`、`pymss_weights`(3HP 分离模型)、`hubert_base`、`rmvpe`;
-2. 获取网关:[仓库地址](https://github.com/AkinoSa/cucumber-rvc-gateway)(独立项目、独立部署、独立版本);
-3. `cp .env.example .env`,按注释填写模型目录、工作目录、AstrBot plugin_data 路径与端口;
-4. `docker compose up -d --build`,启动自检会逐项报告模型/目录状态;
-5. 测试:`curl http://127.0.0.1:3333/`。
+本插件需要一个独立部署的推理网关。**普通用户直接使用 GHCR 预构建镜像**,不需要自行构建:
 
-部署拓扑支持:同机 Docker、跨容器、跨主机——只要 AstrBot 能访问到 `rvc_base_url`。完整说明见 **[Gateway README](https://github.com/AkinoSa/cucumber-rvc-gateway)**。
+1. 准备 RVC 整合包的 assets:`weights`(音色 .pth)、`indices`、`pymss_weights`(3HP 分离模型)、`hubert_base`、`rmvpe`;
+2. 获取网关:
+   ```bash
+   git clone https://github.com/AkinoSa/cucumber-rvc-gateway.git
+   cd cucumber-rvc-gateway
+   cp .env.example .env
+   # 编辑 .env,按注释填写路径与端口
+   docker compose pull && docker compose up -d
+   ```
+3. 测试:`curl http://127.0.0.1:3333/` 返回 200 即启动成功。
+
+部署拓扑支持:同机 Docker、跨容器、跨主机——只要 AstrBot 能访问到 `rvc_base_url`。完整说明(含 Linux/Windows/飞牛 NAS 安装流程、GHCR 镜像信息、模型挂载说明)见 **[Gateway README](https://github.com/AkinoSa/cucumber-rvc-gateway)**。
 
 ## 配置要点
 
@@ -123,6 +130,9 @@ git clone https://github.com/AkinoSa/astrbot_plugin_cucumber_rvc_console.git
 3. **网关问题**:WebUI 概览 Gateway 状态 / 诊断页;`curl http://<网关地址>/` 验证。
 
 确定性替代:`/rvc 歌名` 命令不依赖 LLM。
+
+> [!IMPORTANT]
+> **TTS 语音回复还需要额外配置一个 TTS 服务商**:AstrBot 服务商配置 → 新增 → 类型选 **text_to_speech**。插件不内置 TTS API,原始语音由 AstrBot 已配置的 TTS 服务商生成后交给网关变声。推荐 Edge TTS(免费无 Key)或 fish.audio(音质好,需代理)。如果只配置了 LLM 服务商而没有 TTS 服务商,TTS 语音回复不会触发,请先在 AstrBot 服务商配置中添加。
 
 ## 路径说明
 
@@ -198,4 +208,4 @@ git clone https://github.com/AkinoSa/astrbot_plugin_cucumber_rvc_console.git
 
 本项目基于 AGPL-3.0 发布,继承上游全部许可义务;详见 [LICENSE](LICENSE) 与 [NOTICE.md](NOTICE.md)。
 
-![Moe Counter](https://count.getloli.com/get/@astrbot_plugin_cucumber_rvc_console?theme=rule34)
+
