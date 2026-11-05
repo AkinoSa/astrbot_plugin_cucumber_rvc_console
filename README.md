@@ -36,6 +36,32 @@
 
 ---
 
+## 🆚 相对于原版的区别 (与 matsuko_cover 对比)
+
+本项目由 [sdfsfsk/matsuko_cover](https://github.com/sdfsfsk/matsuko_cover) (AI 翻唱插件，原支持 RVC/SVC-Fusion/SoulX-SVCVC 三引擎) 深度派生重构而来。完整比对详见 [docs/UPSTREAM_COMPARISON.md](docs/UPSTREAM_COMPARISON.md)，演变历程见 [docs/PROJECT_HISTORY.md](docs/PROJECT_HISTORY.md)。
+
+| 维度 | 原版 matsuko_cover (v2.13.0) | 本项目 cucumber_rvc_console | 改进提升 |
+|---|---|---|---|
+| **代码与架构** | ~6300 行单体插件，依赖外部自备 Gradio/整合包 | ~9000 行解耦架构，配套独立 Docker 网关容器 | 调度端与重型推理端彻底隔离，避免机器人崩溃 |
+| **推理后端** | 外部裸跑 Gradio WebUI（需手动管理环境） | **cucumber-rvc-gateway**（Docker 镜像预构建） | 开箱即用，免配复杂 PyTorch/CUDA 环境 |
+| **Worker 机制** | 无常驻 Worker，每次变声重复加载模型耗时 ~40s | **常驻推理 Worker**，模型常驻保活，空闲 10 分钟自动回收 | 第二次起变声省去 40s+ 冷启动，变声秒级响应 |
+| **人声分离** | 依赖外部 UVR5 / MSST WebUI 服务 | 内置 **PyMSS 3HP-Vocal-UVR** 自动化分离 | 静音检测 + 人声偏轻自动换段重试，分离效果更佳 |
+| **混响声学处理** | 简单参数（部分参数未真实生效） | **8 参数真实 FFT 卷积混响引擎** | wet/dry/room/decay/damping/pre-delay/width 真实卷积生效 |
+| **管理控制台** | 无原生控制台 | **原生 WebUI 控制台（8 大功能面板）** | 任务看板/RVC控制台/TTS试音/模型管理/声学调音/诊断 |
+| **TTS 拟人变声** | 无 TTS 变声链路 | **TTS + RVC 拟人角色变声全链路** | 结合 AstrBot TTS 服务商，赋予角色真实灵魂声线 |
+| **音源与选歌** | 单一音源易失效，需手动干预 | **多音源路由 + 启发式评分智能选歌** | 网易云/酷狗/酷我/QQ 自动路由，智能过滤伴奏试听 |
+| **任务与状态** | 无排队机制，并发易造成 OOM 崩溃 | **全局 FIFO 串行任务队列 + `/cover_status`** | 防重复提交，状态透明可查，任务可软/硬取消 |
+| **引擎精简** | 包含无人维护的 SVC-Fusion / SoulX-SVCVC | **专注极致打磨 RVC 单引擎** | 剔除冗余包袱，专注稳定性与低资源消耗 |
+| **开源许可** | AGPL-3.0 | AGPL-3.0 (完全继承开源许可) | 严格遵守 AGPL-3.0 协议 |
+
+### 核心演化总结
+- **继承自原版**：多音源点歌思想、LLM 工具调用框架、本地音频翻唱、自动升降调（性别识别）、选歌菜单与偏好学习。
+- **重构与增强**：音源路由化与自动选歌评分制；RVC 推理全面迁移至独立 Docker 网关；推理参数与 8 参数卷积混响真实生效；全局 FIFO 串行队列防崩溃；双兜底消息发送机制。
+- **全新新增**：TTS 语音回复全链路（TTS → RVC 变声）；原生 WebUI 8 大面板管理控制台；常驻推理 Worker 模型保活；`/cover_status` 进度查询与排队取消；旧版数据无缝平滑迁移。
+- **为什么需要独立 Gateway**：RVC/3HP 推理是重 CPU/GPU 任务（实测 30s 片段峰值需 ~4GB 内存），必须全局串行且与机器人进程物理隔离，否则极易把 AstrBot 主进程拖垮或触发 OOM；自研网关常驻保持模型加载，省去每次 40s+ 的冷启动开销，变声效率提升数倍。
+
+---
+
 ## 🌟 核心特性一览
 
 | 模块 | 功能项 | 说明 |
